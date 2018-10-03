@@ -1,0 +1,25 @@
+{% include 'utils.jinja2' %}
+
+<h1>{{ ind.first_name }} {{ ind.surname }}</h1>
+
+{%- if ind.father -%}
+  <p>Father: {{ person_link (ind.father) }}</p>
+{%- endif -%}
+
+{%- if ind.mother -%}
+  <p>Mother: {{ person_link (ind.mother) }}</p>
+{%- endif -%}
+
+<p>
+  {%- if ind.children -%}
+    <ul>
+      {%- for c in ind.children -%}
+        <li>{{ person_link(c) }}</li>
+      {%- endfor -%}
+    </ul>
+  {%- else -%}
+    No children!
+  {%- endif -%}
+</p>
+
+<button onclick="Page.summary()">Back to home</button>

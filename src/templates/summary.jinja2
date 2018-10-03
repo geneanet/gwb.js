@@ -1,0 +1,26 @@
+<h1>Database summary</h1>
+<p>Number of persons: {{ data.nb_of_persons }}</p>
+<p>Number of families: {{ data.nb_of_families }}</p>
+
+<p>
+  <form onsubmit="return (function () {
+                  var fn = document.getElementById('i_fn').value ;
+                  var sn = document.getElementById('i_sn').value ;
+                  var occ = document.getElementById('i_occ').value ;
+                  Page.searchPerson (fn, sn, occ) ;
+                  return false ;
+                  })()">
+                  <input id="i_fn" placeholder="First name" type="text">
+                  <input id="i_sn" placeholder="Last name" type="text">
+                  <input id="i_occ" placeholder="OCC" type="text" value="0">
+                  <button type="submit">Search</button>
+  </form>
+</p>
+
+<p>
+  <button onclick="Page.person({{ data.random_iper }})">See a random person</button>
+</p>
+
+<p>
+  <button onclick="Page.oldestAlive()">See oldest alive</button>
+</p>

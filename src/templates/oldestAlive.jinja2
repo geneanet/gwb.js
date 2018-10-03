@@ -1,0 +1,6 @@
+{% include 'utils.jinja2' %}
+
+<h1>The {{ length (data) }} oldest perhaps still alive</h1>
+<ul>
+  {% for person, date in data %}<li>{{ person_link (person) }}</li>{% endfor %}
+</ul>
