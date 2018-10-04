@@ -7,11 +7,14 @@
     <meta name="msapplication-tap-highlight" content="no">
     <meta name="viewport" content="user-scalable=no, initial-scale=1, maximum-scale=1, minimum-scale=1, width=device-width">
     <title>gwb.js</title>
+    <script type="text/javascript" src="cordova.js"></script>
+    <!-- <script type="text/javascript" src="gwb.bc.js"></script> -->
+    <script type="text/javascript" src="init.js"></script>
+    <script type="text/javascript">document.addEventListener("deviceready", initFS, false)</script>
   </head>
   <body>
     <h1>Loading...</h1>
-    <script type="text/javascript" src="cordova.js"></script>
-    <script type="text/javascript" src="gwb.bc.js"></script>
-    <script type="text/javascript">document.addEventListener("deviceready", GWB.init, false);</script>
+    <input type="file" multiple id="input"></input>
+    <button onclick="Page.summary()">GO!</button>
   </body>
 </html>

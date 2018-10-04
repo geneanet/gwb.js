@@ -20,34 +20,30 @@ src/ml/templates.ml: $(wildcard src/templates/*.jinja2)
 	ocaml src/templates/compile.ml src/templates/ > $@
 
 $(JSFILE): src/ml/templates.ml $(wildcard src/ml/*.ml)
-	$(DUNE) build $(JSNAME)
-	sed -i 's/function fs_node_supported()/function fs_node_supported(){return false}function _FOOOOOOOOOOOOOOOOO()/g' $(JSFILE)
+	$(DUNE) build --profile release $(JSNAME)
 
 build: $(JSFILE)
 
 cordova-init: | $(BUILD_DIR)
 	cordova create $(APPNAME) && mv $(APPNAME) $(CORDOVA_BUILD_DIR)
-	rm -rf $(CORDOVA_BUILD_DIR)www/img
-	rm -rf $(CORDOVA_BUILD_DIR)www/css
-	rm -rf $(CORDOVA_BUILD_DIR)www/js
-	rm $(CORDOVA_BUILD_DIR)www/index.html
 	$(CORDOVA) platform add browser
-	$(CORDOVA) platform add android
+#	$(CORDOVA) platform add android
 
 cordova-build: build | $(BUILD_DIR)
 	cp $(JSFILE) src/cordova/www/
 	$(RSYNC) src/cordova/ $(CORDOVA_BUILD_DIR)
 	$(CORDOVA) build browser
-	$(CORDOVA) build android
+#	$(CORDOVA) build android
 
-cordova-run-android: | $(BUILD_DIR)
-	$(CORDOVA) run --nobuild android
+# cordova-run-android: | $(BUILD_DIR)
+# 	$(CORDOVA) run --nobuild android
 
 cordova-run-browser:
 	$(CORDOVA) run --nobuild browser
 
-cordova-rm:
-	rm -rf $(CORDOVA_BUILD_DIR)
+cordova-clean:
+	$(CORDOVA) clean browser
+#	$(CORDOVA) clean android
 
 electron-init:
 	electron-forge init $(APPNAME) && mv $(APPNAME) $(ELECTRON_BUILD_DIR)
@@ -63,10 +59,9 @@ electron-build:
 electron-run:
 	$(ELECTRON) start
 
-electron-rm:
-	rm -rf $(ELECTRON_BUILD_DIR)
-
 clean:
 	$(DUNE) clean
 
-mr-proper: clean electron-rm cordova-rm
+mr-proper: clean
+	rm -rf $(CORDOVA_BUILD_DIR)
+	rm -rf $(ELECTRON_BUILD_DIR)

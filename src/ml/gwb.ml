@@ -1,5 +1,6 @@
 let conf = Conf.conf
 
+open Js_of_ocaml
 open Dom_html
 
 let file_reader file callback =
@@ -13,7 +14,7 @@ let file_reader file callback =
              (File.CoerceTo.string target##.result)
              (fun () -> Js.bool false)
              (fun result ->
-                callback (Js.to_bytestring result) ) ) )
+                callback (Js.to_bytestring result) ) ) ) (* caml_new_string *)
   in
   reader##readAsBinaryString file
 
@@ -22,7 +23,7 @@ let input_file ?(multiple=false) () =
   if multiple then x##setAttribute (Js.string "multiple") (Js.string "") ;
   x
 
-let bname = "foo"
+let bname = "grimaldi"
 let bdir = bname ^ ".gwb/"
 
 module Page = struct
@@ -45,8 +46,7 @@ module Page = struct
       let ctx = Jg_interp.init_context ~env ~models ~output () in
       let ast = Jg_interp.import_macros env ctx ast in
       ignore @@ List.fold_left (Jg_interp.eval_statement env) ctx ast ;
-      let body = Dom_html.document##.body in
-      body##.innerHTML := Js.string @@ Buffer.contents buf
+      Buffer.contents buf
     with e ->
       Printexc.print_backtrace stdout ;
       raise e
@@ -69,12 +69,7 @@ module Page = struct
     ("ind", Data.get_n_mk_person conf base (Adef.iper_of_int i) ) :: []
 
   let searchPerson base fn sn occ =
-    match
-      Gwdb.person_of_key base
-        (Js.to_string fn)
-        (Js.to_string sn)
-        (int_of_string @@ Js.to_string occ)
-    with
+    match Gwdb.person_of_key base fn sn occ with
     | Some i -> person base (Adef.int_of_iper i)
     | None -> interp Templates.error []
 
@@ -100,88 +95,53 @@ module Page = struct
 
 end
 
-let setup base =
-  let o =
-    object%js
-      method person = Page.person base
-      method summary = Page.summary base
-      method searchPerson = Page.searchPerson base
-      method oldestAlive = Page.oldestAlive base
-    end
-  in
-  Js.Unsafe.global##.Page := o ;
-  o
-
-let init () =
-  let create create ?onclick ?(att = []) content =
-    let x = create document in
-    begin match onclick with
-      | Some fn -> x##.onclick := Dom.handler (fun e -> fn e ; Js._true)
-      | None -> ()
-    end ;
-    List.iter (fun (k, v) -> x##setAttribute (Js.string k) (Js.string v)) att ;
-    List.iter (Dom.appendChild x) content ;
-    x
-  in
-  let h1 = create createH1 in
-  let button = create createButton in
-  let pcdata str = document##createTextNode (Js.string str) in
-  let input = input_file ~multiple:true () in
-  let span = create createSpan in
-  let p = create createP in
-  let ul = create createUl in
-  let li = create createLi in
-  let check =
-    List.map
-      (fun s -> (s, span ~att:[ ("style", "background-color:red;color:white;") ] [ pcdata s ] ))
-      [ "tstab"
-      ; "cache_visited"
-      ; "cache_info"
-      ; "synchro_patches"
-      ; "patches"
-      ; "notes_links"
-      ; "notes"
-      ; "command.txt"
-      ; "fnames.inx"
-      ; "fnames.dat"
-      ; "snames.inx"
-      ; "snames.dat"
-      ; "names.inx"
-      ; "names.acc"
-      ; "base.acc"
-      ; "strings.inx"
-      ; "base"
-      ]
-  in
-  input##.onchange := Dom.handler begin fun _e ->
-      Js.Optdef.case (input##.files) (fun () -> failwith __LOC__) @@ fun files ->
-      let len = files##.length in
-      for i = 0 to len - 1 do
-        Js.Opt.case (files##item i) (fun () -> failwith __LOC__) @@ fun file ->
-        let name = Js.to_string file##.name in
-        file_reader (Js.Unsafe.coerce file)
-          (fun blob ->
-             Sys_js.create_file ~name:(bdir ^ name) ~content:blob ;
-             (List.assoc name check)##setAttribute
-               (Js.string "style")
-               (Js.string "background-color:green;color:white;") ;
-             Js.bool true)
-      done ;
-      Js.bool true
-    end ;
-  let body = Dom_html.document##.body in
-  body##.innerHTML := Js.string "" ;
-  List.iter (Dom.appendChild body)
-    [ (h1 [ pcdata "Load files and press ok" ] :> Dom.node Js.t)
-    ; (input :> Dom.node Js.t)
-    ; (button
-         ~onclick:(fun _e ->
-             let base = Gwdb.open_base bname in
-             let o = setup base in
-             o##summary)
-         [ pcdata "GO!" ] :> Dom.node Js.t)
-    ; (p [ ul (List.map (fun (_, x) -> li [ x ]) check) ] :> Dom.node Js.t)
-    ]
-
 let () =
-  Js.export "GWB" begin object%js method init = init () end end
+  let global = Obj.magic @@ ref 0 in
+  Worker.set_onmessage (fun e ->
+      Firebug.console##log(Js.string "Message received from main script") ;
+      Firebug.console##log(e) ;
+      match Js.to_string e##.type_ with
+      | "loadFiles" ->
+        e##.data##forEach
+          begin Js.wrap_callback @@ fun x _i ->
+           let name = Js.to_string @@ Js.Unsafe.get x (Js.string "name") in
+           let data = Js.Unsafe.get x (Js.string "data") in
+           let data = Js.to_bytestring data in
+           print_endline __LOC__ ;
+           print_endline @@ Digest.to_hex @@ Digest.string data ;
+           let data = Bytes.unsafe_of_string data in
+           let len = Bytes.length data in
+           print_endline @@ __LOC__ ^ " -- " ^ bdir ^ name ^ " -- " ^ (string_of_int len) ;
+           let oc = open_out @@ bdir ^ name in
+           let () = output oc data 0 len in
+           let () = close_out oc in
+           print_endline __LOC__ ;
+           print_endline @@ Digest.to_hex @@ Digest.file @@ bdir ^ name ;
+           print_endline @@ "Saved " ^ bdir ^ name
+          end ;
+        print_endline __LOC__ ;
+      | "openBase" ->
+        let base = Gwdb.open_base bname in
+        let () = Gwdb.load_persons_array base in
+        global :=
+          object%js
+            method person (p) = Page.person base p
+            method summary = Page.summary base
+            method searchPerson (fn, sn, occ) =
+              Page.searchPerson base (Js.to_string fn) (Js.to_string sn) (int_of_string @@ Js.to_string occ)
+            method oldestAlive = Page.oldestAlive base
+          end ;
+        print_endline "READY TO ROCK!!!"
+      | "display" ->
+        let page =
+          match Js.to_string e##.data##.page with
+          | "person" -> print_endline __LOC__ ; ignore e##.data##.payload ; (!global)##person 139
+          | "summary" -> print_endline __LOC__ ; (!global)##summary
+          | "searchPerson" -> print_endline __LOC__ ; (!global)##searchPerson e##.data##.payload
+          | "oldestAlive" -> print_endline __LOC__ ; (!global)##oldestAlive e##.data##.payload
+          | _ -> failwith __LOC__
+        in
+        Firebug.console##log page ;
+        Worker.post_message (Js.string page)
+      | _ -> failwith __LOC__
+    ) ;
