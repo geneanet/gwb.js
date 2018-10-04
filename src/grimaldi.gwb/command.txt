@@ -1,0 +1,1 @@
+./distribution/gw/ged2gwb -o /home/jsagot/workspace/gwb.js/src/cordova/www/grimaldi /home/jsagot/workspace/geneweb/test/grimaldi.ged
