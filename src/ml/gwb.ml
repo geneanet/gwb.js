@@ -1,3 +1,5 @@
+open Js_of_ocaml
+
 let conf = Conf.conf
 
 open Dom_html
