@@ -1,5 +1,5 @@
 (executable
  (name gwb)
  (preprocess (pps js_of_ocaml-ppx))
- (libraries geneweb js_of_ocaml jingoo)
+ (libraries geneweb gwdb yojson js_of_ocaml jingoo)
 )

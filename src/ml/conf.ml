@@ -1,3 +1,5 @@
+open Geneweb
+
 let conf =
   let utm = Unix.time () in
   let tm = Unix.localtime utm in
@@ -19,7 +21,7 @@ let conf =
   ; highlight = ""
   ; lang = ""
   ; default_lang = ""
-  ; default_sosa_ref = (Adef.iper_of_int (-1), None)
+  ; default_sosa_ref = (Gwdb.dummy_iper, None)
   ; multi_parents = false
   ; can_send_image = false
   ; authorized_wizards_notes = false

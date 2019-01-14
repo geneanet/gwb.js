@@ -1,72 +1,15 @@
-(* /!\ copy/paste gnt-gwd without API part /!\ *)
+(* /!\ This is mostly copy/paste of the Perso module /!\ *)
+(* Sync with perso from ed7525bac *)
 
 open Geneweb
-
-open Config
-open Def
 open Gwdb
+open Def
+open Config
 open Util
-module Date2 = Date
-
-type fam = (ifam * family * (iper * iper * iper) * bool)
-
-type rel = (relation * person option)
-
-type env =
-  { all_gp : Perso.generation_person list option
-  ; baseprefix : string option
-  ; desc_level_table : (int array * int array) Lazy.t option
-  ; desc_mark : bool array ref option
-  ; f_link : bool option
-  ; fam : fam option
-  ; fam_link : fam option
-  ; p_link : bool option
-  ; prev_fam : fam option
-  ; sosa : (iper * (Sosa.t * person) option) list ref option
-  ; sosa_ref : person option Lazy.t option
-  ; src : string option
-  ; t_sosa : Perso.sosa_t option
-  }
-
-let conf_w_baseprefix conf env =
-  match env.baseprefix with
-  | Some baseprefix -> { conf with command = baseprefix }
-  | None -> conf
-
-let empty = { all_gp = None
-            ; baseprefix = None
-            ; desc_level_table = None
-            ; desc_mark = None
-            ; fam = None
-            ; f_link = None
-            ; fam_link = None
-            ; p_link = None
-            ; prev_fam = None
-            ; sosa = None
-            ; sosa_ref = None
-            ; src = None
-            ; t_sosa = None
-            }
-
-let env = empty
-
-let get_env x = match x with Some x -> x | None -> raise Not_found
-
-let get_sosa conf base env r p =
-  try List.assoc (get_key_index p) !r
-  with Not_found ->
-    let s =
-      match env.sosa_ref with
-      | None -> None
-      | Some v -> match env.t_sosa with
-        | Some t_sosa -> Perso.find_sosa conf base p v t_sosa
-        | None -> None
-    in
-    r := (get_key_index p, s) :: !r; s
 
 let mk_note conf base p note =
   (* FIXME WTF IS THAT? *)
-  let env = ['i', (fun () -> Util.default_image_name base p)] in
+  let env = ['i', (fun () -> default_image_name base p)] in
   let s = sou base note in
   let s = string_with_macros conf env s in
   let lines = Wiki.html_of_tlsw conf s in
@@ -78,6 +21,11 @@ let mk_note conf base p note =
   in
   Wiki.syntax_links conf wi (String.concat "\n" lines)
 
+let sex_of_index = function
+  | 0 -> Male
+  | 1 -> Female
+  | 2 -> Neuter
+  | _ -> raise (Invalid_argument "sex_of_index")
 
 module Person = struct
 
@@ -104,12 +52,9 @@ module Person = struct
   let approx_death_place conf base p =
     snd (Util.get_approx_death_date_place conf base p)
 
-  let auto_image_file_name conf base p =
-    match auto_image_file conf base p with
-    | Some s -> s
-    | _ -> raise Not_found
-
   let bname_prefix conf = Util.commd conf
+
+  let birth_date p = Adef.od_of_cdate (get_birth p)
 
   let birth_place conf base p =
     Util.string_of_place conf (sou base (get_birth_place p))
@@ -132,10 +77,7 @@ module Person = struct
   let burial_note conf base p =
     mk_note conf base p (get_burial_note p)
 
-  let children base p =
-    Array.fold_right
-      (fun ifam -> Array.fold_right List.cons (get_children @@ foi base ifam) )
-      (get_family p) []
+  let children base p = ChangeChildren.select_children_of base p
 
   (* let child conf base p =
    *   match get_env "child" env with
@@ -195,7 +137,8 @@ module Person = struct
   let digest base p =
     Update.digest_person (UpdateInd.string_person_of base p)
 
-  let events conf base p = Perso.events_list conf base p
+  let events conf base p =
+    Perso.events_list conf base p
 
   (* let fam_access p =
    *   (\* deprecated since 5.00: rather use "i=%family.index;;ip=%index;" *\)
@@ -221,280 +164,6 @@ module Person = struct
   let first_name_key_strip base p =
     Name.strip_c (p_first_name base p) '"'
 
-  let has_approx_birth_date conf base p =
-    fst (Util.get_approx_birth_date_place conf base p) <> None
-
-  let has_approx_birth_place conf base p =
-    snd (Util.get_approx_birth_date_place conf base p) <> ""
-
-  let has_approx_death_date conf base p =
-    fst (Util.get_approx_death_date_place conf base p) <> None
-
-  let has_approx_death_place conf base p =
-    snd (Util.get_approx_death_date_place conf base p) <> ""
-
-  let has_aliases p =
-     get_aliases p <> []
-
-  let has_baptism_date p =
-    get_baptism p <> Adef.cdate_None
-
-  let has_baptism_place base p =
-    sou base (get_baptism_place p) <> ""
-
-  let has_baptism_source base p =
-    sou base (get_baptism_src p) <> ""
-
-  let has_baptism_note conf base p =
-    not conf.no_note && sou base (get_baptism_note p) <> ""
-
-  let has_baptism_witnesses conf base p =
-    let rec loop pevents =
-      match pevents with
-        [] -> false
-      | (name, _, _, _, _, wl, _) :: events ->
-        if name = Perso.Pevent Epers_Baptism then Array.length wl > 0
-        else loop events
-    in
-    loop (Perso.events_list conf base p)
-
-  let has_birth_date p =
-    get_birth p <> Adef.cdate_None
-
-  let has_birth_place base p =
-    sou base (get_birth_place p) <> ""
-
-  let has_birth_source base p =
-    sou base (get_birth_src p) <> ""
-
-  let has_birth_note conf base p =
-    not conf.no_note && sou base (get_birth_note p) <> ""
-
-  let has_birth_witnesses conf base p =
-    let rec loop pevents =
-      match pevents with
-        [] -> false
-      | (name, _, _, _, _, wl, _) :: events ->
-        if name = Perso.Pevent Epers_Birth then Array.length wl > 0
-        else loop events
-    in
-    loop (Perso.events_list conf base p)
-
-  let has_burial_date p =
-    match get_burial p with
-    | Buried cod -> Adef.od_of_cdate cod <> None
-    | _ -> false
-
-  let has_burial_place base p =
-    sou base (get_burial_place p) <> ""
-
-  let has_burial_source base p =
-    sou base (get_burial_src p) <> ""
-
-  let has_burial_note conf base p =
-    not conf.no_note && sou base (get_burial_note p) <> ""
-
-  let has_burial_witnesses conf base p =
-    let rec loop pevents =
-      match pevents with
-        [] -> false
-      | (name, _, _, _, _, wl, _) :: events ->
-        if name = Perso.Pevent Epers_Burial then Array.length wl > 0
-        else loop events
-    in
-    loop (Perso.events_list conf base p)
-
-  let has_children _conf base p =
-    match env.fam with
-    | Some (_, fam, _, _) -> Array.length (get_children fam) > 0
-    | _ ->
-      (Array.exists
-         (fun ifam -> Array.length (get_children @@ foi base ifam) > 0)
-         (get_family p))
-
-  let has_consanguinity p =
-    get_consang p != Adef.fix (-1) &&
-    get_consang p >= Adef.fix_of_float 0.0001
-
-  let has_cremation_date p =
-    match get_burial p with
-    | Cremated cod -> Adef.od_of_cdate cod <> None
-    | _ -> false
-
-  let has_cremation_place base p =
-    sou base (get_burial_place p) <> ""
-
-  let has_cremation_witnesses conf base p =
-    let rec loop pevents =
-      match pevents with
-        [] -> false
-      | (name, _, _, _, _, wl, _) :: events ->
-        if name = Perso.Pevent Epers_Cremation then Array.length wl > 0
-        else loop events
-    in
-    loop (Perso.events_list conf base p)
-
-  let has_death_date p =
-    match get_death p with
-    | Death (_, _) -> true
-    | _ -> false
-
-  let has_death_place base p =
-    sou base (get_death_place p) <> ""
-
-  let has_death_source base p =
-    sou base (get_death_src p) <> ""
-
-  let has_death_note conf base p =
-    not conf.no_note && sou base (get_death_note p) <> ""
-
-  let has_death_witnesses conf base p =
-    let rec loop pevents =
-      match pevents with
-        [] -> false
-      | (name, _, _, _, _, wl, _) :: events ->
-        if name = Perso.Pevent Epers_Death then Array.length wl > 0
-        else loop events
-    in
-    loop (Perso.events_list conf base p)
-
-  (* FIXME *)
-  let has_event conf base p =
-    match p_getenv conf.base_env "display_timeline" with
-      Some "no" -> false
-    | Some "yes" -> true
-    | _ ->
-      (* Renvoie vrai que si il y a des informations supplémentaires *)
-      (* par rapport aux évènements principaux, i.e. témoins (mais   *)
-      (* on ne prend pas en compte les notes).                       *)
-      let events = Perso.events_list conf base p in
-      let nb_fam = Array.length (get_family p) in
-      let rec loop events nb_birth nb_bapt nb_deat nb_buri nb_marr =
-        match events with
-          [] -> false
-        | (name, _, p, n, s, wl, _) :: events ->
-          let (p, n, s) = sou base p, sou base n, sou base s in
-          match name with
-            Perso.Pevent pname ->
-            begin match pname with
-                Epers_Birth | Epers_Baptism | Epers_Death |
-                Epers_Burial | Epers_Cremation ->
-                if Array.length wl > 0 then true
-                else
-                  let (nb_birth, nb_bapt, nb_deat, nb_buri) =
-                    match pname with
-                      Epers_Birth ->
-                      succ nb_birth, nb_bapt, nb_deat, nb_buri
-                    | Epers_Baptism ->
-                      nb_birth, succ nb_bapt, nb_deat, nb_buri
-                    | Epers_Death ->
-                      nb_birth, nb_bapt, succ nb_deat, nb_buri
-                    | Epers_Burial | Epers_Cremation ->
-                      nb_birth, nb_bapt, nb_deat, succ nb_buri
-                    | _ -> nb_birth, nb_bapt, nb_deat, nb_buri
-                  in
-                  if nb_birth > 1 || nb_bapt > 1 || nb_deat > 1 || nb_buri > 1
-                  then true
-                  else
-                    loop events nb_birth nb_bapt nb_deat nb_buri
-                      nb_marr
-              | _ -> true
-            end
-          | Perso.Fevent fname ->
-            match fname with
-              Efam_Engage | Efam_Marriage | Efam_NoMention |
-              Efam_NoMarriage ->
-              let nb_marr = succ nb_marr in
-              if nb_marr > nb_fam then true
-              else
-                loop events nb_birth nb_bapt nb_deat nb_buri
-                  nb_marr
-            | Efam_Divorce | Efam_Separated ->
-              if p <> "" || n <> "" || s <> "" ||
-                 Array.length wl > 0
-              then
-                true
-              else
-                loop events nb_birth nb_bapt nb_deat nb_buri
-                  nb_marr
-            | _ -> true
-      in
-      loop events 0 0 0 0 0
-
-  let nb_families _conf p =
-    Array.length (get_family p)
-
-  let has_families conf p = nb_families conf p > 0
-
-  let has_first_names_aliases p =
-    get_first_names_aliases p <> []
-
-  let has_history conf base p = Perso.has_history conf base p true
-
-  let has_image conf base p = Util.has_image conf base p
-
-  let has_nephews_or_nieces conf base p = has_nephews_or_nieces conf base p
-
-  let has_nobility_titles conf base p = nobtit conf base p <> []
-
-  let has_notes conf base p =
-    not conf.no_note && sou base (get_notes p) <> ""
-
-  let has_pnotes = has_notes
-
-  let has_occupation base p =
-    sou base (get_occupation p) <> ""
-
-  let has_parents _conf p =
-    get_parents p <> None
-
-  let has_possible_duplications conf base p =
-    Perso.has_possible_duplications conf base p
-
-  let has_psources base p =
-    sou base (get_psources p) <> ""
-
-  let has_public_name base p =
-    sou base (get_public_name p) <> ""
-
-  let has_qualifiers p =
-    get_qualifiers p <> []
-
-  let has_relations conf base p =
-    if conf.use_restrict then
-      let related =
-        List.fold_left
-          (fun l ip ->
-             let rp = pget conf base ip in
-             if is_hidden rp then l else ip :: l)
-          [] (get_related p)
-      in
-      get_rparents p <> [] || related <> []
-    else (get_rparents p <> [] || get_related p <> [])
-
-  let has_siblings _conf base p =
-    begin match get_parents p with
-        Some ifam -> Array.length (get_children (foi base ifam)) > 1
-      | None -> false
-    end
-
-  let has_sources conf base p =
-    (sou base (get_psources p) <> "" || sou base (get_birth_src p) <> "" ||
-     sou base (get_baptism_src p) <> "" ||
-     sou base (get_death_src p) <> "" ||
-     sou base (get_burial_src p) <> "" ||
-     Array.exists
-       (fun ifam ->
-          let fam = foi base ifam in
-          let isp = Gutil.spouse (get_key_index p) fam in
-          let m_auth = authorized_age conf base (poi base isp) in
-          m_auth &&
-          (sou base (get_marriage_src fam) <> "" ||
-           sou base (get_fsources fam) <> ""))
-       (get_family p))
-
-  let has_surnames_aliases p =
-    get_surnames_aliases p <> []
 
   let history_file base p =
     let fn = sou base (get_first_name p) in
@@ -519,128 +188,6 @@ module Person = struct
   let image_url conf base p =
     Perso.string_of_image_url conf base (p, true) false
 
-  let ind_access p =
-    (* deprecated since 5.00: rather use "i=%index;" *)
-    "i=" ^ string_of_int (Adef.int_of_iper (get_key_index p))
-
-  let index p =
-    (* FIXME *)
-    (* if get_env env.p_link then "" else *) string_of_int (Adef.int_of_iper (get_key_index p))
-
-  let is_accessible_by_key conf base p =
-    Util.accessible_by_key
-      conf base p (p_first_name base p) (p_surname base p)
-
-  let is_birthday conf p =
-    match Adef.od_of_cdate (get_birth p) with
-    | Some (Dgreg (d, _)) ->
-      if d.prec = Sure && get_death p = NotDead then
-        d.day = conf.today.day && d.month = conf.today.month &&
-        d.year < conf.today.year ||
-        not (CheckItem.leap_year conf.today.year) && d.day = 29 &&
-        d.month = 2 && conf.today.day = 1 && conf.today.month = 3
-      else false
-    | _ -> false
-
-  let is_buried p =
-    match get_burial p with
-    | Buried _ -> true
-    | _ -> false
-
-  let is_cremated p =
-    match get_burial p with
-    | Cremated _ -> true
-    | _ -> false
-
-  let is_dead p =
-    match get_death p with
-    | Death (_, _) | DeadYoung | DeadDontKnowWhen -> true
-    | _ -> false
-
-  let is_certainly_dead p =
-    match get_death p with
-    | OfCourseDead -> true
-    | _ -> false
-
-  let is_computable_age p =
-    match Adef.od_of_cdate (get_birth p), get_death p with
-    | Some (Dgreg (d, _)), NotDead ->
-      not (d.day = 0 && d.month = 0 && d.prec <> Sure)
-    | _ -> false
-
-  let is_computable_death_age p =
-    match Date.get_birth_death_date p with
-    | ( Some (Dgreg (({prec = Sure | About | Maybe ; _} as d1), _))
-      , Some (Dgreg (({prec = Sure | About | Maybe ; _} as d2), _))
-      , _ )
-      when d1 <> d2 ->
-      let a = CheckItem.time_elapsed d1 d2 in
-      a.year > 0 ||
-      a.year = 0 && (a.month > 0 || a.month = 0 && a.day > 0)
-    | _ -> false
-
-  let is_computable_marriage_age p =
-    let (_, fam, _, m_auth) = get_env env.fam in
-    if m_auth then
-      match
-        Adef.od_of_cdate (get_birth p),
-        Adef.od_of_cdate (get_marriage fam)
-      with
-      | ( Some (Dgreg (({prec = Sure | About | Maybe ; _} as d1), _))
-        , Some (Dgreg (({prec = Sure | About | Maybe ; _} as d2), _)) ) ->
-        let a = CheckItem.time_elapsed d1 d2 in
-        a.year > 0 ||
-        a.year = 0 && (a.month > 0 || a.month = 0 && a.day > 0)
-      | _ -> false
-    else false
-
-  let is_descendant p =
-    !(get_env env.desc_mark).(Adef.int_of_iper (get_key_index p))
-
-  let is_female p =
-    get_sex p = Female
-
-  let is_invisible conf base p =
-    let conf = {conf with wizard = false; friend = false} in
-    not (authorized_age conf base p)
-
-  let is_male p =
-    get_sex p = Male
-
-  let is_private p =
-    get_access p = Private
-
-  let is_public p =
-    get_access p = Public
-
-  let is_restricted p =
-    is_hidden p
-
-  let is_wedding_birthday conf base _p =
-    match env.fam with
-    | None -> false
-    | Some (_, fam, _, m_auth) ->
-      begin match get_relation fam, get_divorce fam with
-          (Married | NoSexesCheckMarried), NotDivorced ->
-          begin match m_auth, Adef.od_of_cdate (get_marriage fam) with
-              true, Some (Dgreg (d, _)) ->
-              let father = pget conf base (get_father fam) in
-              let mother = pget conf base (get_mother fam) in
-              if d.prec = Sure && authorized_age conf base father &&
-                 get_death father = NotDead &&
-                 authorized_age conf base mother &&
-                 get_death mother = NotDead
-              then
-                d.day = conf.today.day && d.month = conf.today.month &&
-                d.year < conf.today.year ||
-                not (CheckItem.leap_year conf.today.year) && d.day = 29 &&
-                d.month = 2 && conf.today.day = 1 && conf.today.month = 3
-              else false
-            | _ -> false
-          end
-        | _ -> false
-      end
-
   let linked_page conf base p s =
     let bdir = Util.base_path [] (conf.bname ^ ".gwb") in
     let fname = Filename.concat bdir "notes_links" in
@@ -652,42 +199,6 @@ module Person = struct
       fn, sn, get_occ p
     in
     List.fold_left (Perso.linked_page_text conf base p s key) "" db
-
-  let mark_descendants conf base p =
-    let r = get_env env.desc_mark in
-    let tab = Array.make (nb_of_persons base) false in
-    let rec mark_descendants len p =
-      let i = Adef.int_of_iper (get_key_index p) in
-      if tab.(i) then ()
-      else
-        begin
-          tab.(i) <- true;
-          let u = p in
-          for i = 0 to Array.length (get_family u) - 1 do
-            let des = foi base (get_family u).(i) in
-            for i = 0 to Array.length (get_children des) - 1 do
-              mark_descendants (len + 1)
-                (pget conf base (get_children des).(i))
-            done
-          done
-        end
-    in
-    mark_descendants 0 p ;
-    r := tab; ""
-
-  let marriage_age conf p =
-    let (_, fam, _, m_auth) = get_env env.fam in
-    if m_auth then
-      match
-        Adef.od_of_cdate (get_birth p),
-        Adef.od_of_cdate (get_marriage fam)
-      with
-        Some (Dgreg (({prec = Sure | About | Maybe ; _} as d1), _)),
-        Some (Dgreg (({prec = Sure | About | Maybe ; _} as d2), _)) ->
-        let a = CheckItem.time_elapsed d1 d2 in
-        Date.string_of_age conf a
-      | _ -> ""
-    else ""
 
   let max_ancestor_level conf base p =
     let emal =
@@ -717,18 +228,10 @@ module Person = struct
     in
     string_of_int n
 
-  let nb_children _conf base p =
-    match env.fam with
-    | Some (_, fam, _, _) ->
-      string_of_int (Array.length (get_children fam))
-    | None ->
-      let n =
-        List.fold_left
-          (fun n ifam ->
-             n + Array.length (get_children (foi base ifam)))
-          0 (Array.to_list (get_family p))
-      in
-      string_of_int n
+  let nb_children conf base p =
+    Array.fold_left
+      (fun n ifam -> n + Array.length (get_children (foi base ifam)))
+      0 (get_family p)
 
   let nobility_titles conf base p =
     Perso.nobility_titles_list conf base p
@@ -765,20 +268,6 @@ module Person = struct
     in
     string_with_macros conf [] s
 
-  let on_baptism_date conf ?(long_date = false) p =
-    match Adef.od_of_cdate (get_baptism p) with
-    | Some d ->
-      if long_date then Date.string_of_ondate conf d ^ Date.get_wday conf d
-      else Date.string_of_ondate conf d
-    | _ -> raise Not_found
-
-  let on_birth_date conf ?(long_date = false) p =
-    match Adef.od_of_cdate (get_birth p) with
-    | Some d ->
-      if long_date then Date.string_of_ondate conf d ^ Date.get_wday conf d
-      else Date.string_of_ondate conf d
-    | _ -> raise Not_found
-
   let parents p = get_parents p
 
   let pnote = notes
@@ -807,38 +296,35 @@ module Person = struct
           list (get_rparents c) )
       [] (List.sort_uniq compare (get_related p))
 
-  let slash_baptism_date conf p =
-    match Adef.od_of_cdate (get_baptism p) with
-    | Some d -> Date.string_slash_of_date conf d
-    | _ -> ""
+  let siblings base p =
+    match get_parents p with
+    | Some ifam ->
+      let ip = get_key_index p in
+      Array.fold_right
+        (fun i acc -> if i <> ip then i :: acc else acc)
+        (get_children (foi base ifam))
+        []
+    | None -> []
 
-  let slash_birth_date conf p =
-    match Adef.od_of_cdate (get_birth p) with
-    | Some d -> Date.string_slash_of_date conf d
-    | _ -> ""
-
-  let slash_approx_birth_date conf base p =
-    match fst (Util.get_approx_birth_date_place conf base p) with
-    | Some d -> Date.string_slash_of_date conf d
-    | _ -> ""
+  let half_siblings base p =
+    match get_parents p with
+    | Some ifam ->
+      let ip = get_key_index p in
+      let f = foi base ifam in
+      let fath = poi base @@ get_father f in
+      let moth = poi base @@ get_mother f in
+      let filter = fun (acc : iper list) i ->
+        if i = ifam then acc else
+          Array.fold_right
+            (fun i acc -> if i <> ip then i :: acc else acc)
+            (get_children (foi base i)) acc
+      in
+      Array.fold_left
+        filter (Array.fold_left filter [] (get_family fath)) (get_family moth)
+    | None -> []
 
   let static_max_ancestor_level conf base p =
     Perso.max_ancestor_level conf base (get_key_index p) 120 + 1
-
-  (* FIXME *)
-  let on_burial_date conf p =
-    match get_burial p with
-    | Buried cod ->
-      begin match Adef.od_of_cdate cod with
-        | Some d ->
-          begin match p_getenv conf.base_env "long_date" with
-              Some "yes" ->
-              Date.string_of_ondate conf d ^ Date.get_wday conf d
-            | _ -> Date.string_of_ondate conf d
-          end
-        | _ -> ""
-      end
-    | _ -> raise Not_found
 
   let psources conf base p =
     if not conf.no_note then
@@ -856,71 +342,6 @@ module Person = struct
       if conf.pure_xhtml then Util.check_xhtml s else s
     else ""
 
-  let slash_burial_date conf p =
-    match get_burial p with
-    | Buried cod ->
-      begin match Adef.od_of_cdate cod with
-        | Some d -> Date.string_slash_of_date conf d
-        | _ -> ""
-      end
-    | _ -> raise Not_found
-
-  let on_cremation_date conf p =
-    match get_burial p with
-      Cremated cod ->
-      begin match Adef.od_of_cdate cod with
-        | Some d ->
-          begin match p_getenv conf.base_env "long_date" with
-              Some "yes" ->
-              Date.string_of_ondate conf d ^ Date.get_wday conf d
-            | _ -> Date.string_of_ondate conf d
-          end
-        | _ -> ""
-      end
-    | _ -> raise Not_found
-
-  let slash_cremation_date conf p =
-    match get_burial p with
-    | Cremated cod ->
-      begin match Adef.od_of_cdate cod with
-        | Some d -> Date.string_slash_of_date conf d
-        | _ -> ""
-      end
-    | _ -> raise Not_found
-
-  let on_death_date conf p =
-    match get_death p with
-    | Death (_, d) ->
-      let d = Adef.date_of_cdate d in
-      begin match p_getenv conf.base_env "long_date" with
-          Some "yes" -> Date.string_of_ondate conf d ^ Date.get_wday conf d
-        | _ -> Date.string_of_ondate conf d
-      end
-    | _ -> ""
-
-  let slash_death_date conf p =
-    match get_death p with
-    | Death (_, d) ->
-      Date.string_slash_of_date conf (Adef.date_of_cdate d)
-    | _ -> ""
-
-  let slash_approx_death_date conf base p =
-    match fst (Util.get_approx_death_date_place conf base p) with
-    | Some d -> Date.string_slash_of_date conf d
-    | _ -> ""
-
-  let prev_fam_father _p =
-    let (_, _, (ifath, _, _), _) = get_env env.prev_fam in
-    string_of_int (Adef.int_of_iper ifath)
-
-  let prev_fam_index _p =
-    let (ifam, _, _, _) = get_env env.prev_fam in
-    string_of_int (Adef.int_of_ifam ifam)
-
-  let prev_fam_mother _p =
-    let (_, _, (_, imoth, _), _) = get_env env.prev_fam in
-    string_of_int (Adef.int_of_iper imoth)
-
   let public_name base p =
     sou base (get_public_name p)
 
@@ -933,41 +354,7 @@ module Person = struct
     List.map (sou base) (get_qualifiers p)
 
   let sex p =
-    (* Pour éviter les traductions bizarre, on ne teste pas p_auth. *)
     index_of_sex (get_sex p)
-
-  let sosa conf base env r p =
-    get_sosa conf base env r p
-
-  let sosa_in_list p =
-    let all_gp = get_env env.all_gp in
-    match Perso.get_link all_gp (get_key_index p) with
-      Some (Perso.GP_person (s, _, _)) -> Sosa.to_string s
-    | _ -> ""
-
-  let sosa_link conf base p =
-    let x = get_env env.sosa in
-    match get_sosa conf base env x p with
-    | Some (n, q) ->
-      Printf.sprintf "m=RL;i1=%d;i2=%d;b1=1;b2=%s"
-        (Adef.int_of_iper (get_key_index p))
-        (Adef.int_of_iper (get_key_index q)) (Sosa.to_string n)
-    | None -> ""
-
-  let source conf base p =
-    let s = get_env env.src in
-    let env = ['i', (fun () -> Util.default_image_name base p)] in
-    let s =
-      let wi =
-        {Wiki.wi_mode = "NOTES";
-         Wiki.wi_cancel_links = conf.cancel_links;
-         Wiki.wi_file_path = Notes.file_path conf base;
-         Wiki.wi_person_exists = person_exists conf base;
-         Wiki.wi_always_show_link = conf.wizard || conf.friend}
-      in
-      Wiki.syntax_links conf wi s
-    in
-    string_with_macros conf env s
 
   let __src_aux get conf base p =
     Array.map
@@ -1005,12 +392,6 @@ module Person = struct
   let surname_aliases base p =
     List.map (sou base) (get_surnames_aliases p)
 
-  let surname_begin base p =
-    surname_begin base (p_surname base p)
-
-  let surname_end base p =
-    surname_end base (p_surname base p)
-
   let surname_key base p =
     code_varenv (Name.lower (p_surname base p))
 
@@ -1027,7 +408,7 @@ end
 module Date = struct
 
   let prec conf = function
-    | Dgreg (dmy, _) -> quote_escaped (Date.prec_text conf dmy)
+    | Dgreg (dmy, _) -> Util.escape_html (Date.prec_text conf dmy)
     | _ ->  ""
 
   let day = function
@@ -1149,24 +530,12 @@ module Family = struct
 
   let children (_, fam, _, _) = get_children fam
 
-  let desc_level (ifam, _, _, _) =
-    let levt = get_env env.desc_level_table in
-    let (_, flevt) = Lazy.force levt in
-    string_of_int flevt.(Adef.int_of_ifam ifam)
-
-  let divorce_date conf (_, fam, _, m_auth) =
+  let divorce_date (_, fam, _, m_auth) =
     match get_divorce fam with
-    | Divorced d ->
-      begin match Adef.od_of_cdate d with
-        | Some d when m_auth && p_getenv conf.base_env "long_date" = Some "yes" ->
-          Date2.string_of_ondate conf d ^ Date2.get_wday conf d
-        | Some d when m_auth -> Date2.string_of_ondate conf d
-        | _ -> ""
-      end
-    | _ -> raise Not_found
+    | Divorced d -> Adef.od_of_cdate d
+    | _ -> None
 
-  let father (_, _, (ifath, _, _), _) =
-    if env.f_link = None then ifath else raise Not_found
+  let father (_, _, (ifath, _, _), _) = ifath
 
   let has_comment conf base (_, fam, _, m_auth) =
     m_auth && not conf.no_note && sou base (get_comment fam) <> ""
@@ -1185,15 +554,8 @@ module Family = struct
   let has_witnesses (_, fam, _, m_auth) =
     m_auth && Array.length (get_witnesses fam) > 0
 
-  let index (ifam, _, _, _) =
-    Adef.int_of_ifam ifam
-
-  let is_no_mention (_, fam, _, _) =
-    get_relation fam = NoMention
-
-  let is_no_sexes_check (_, fam, _, _) =
-    get_relation fam = NoSexesCheckNotMarried ||
-    get_relation fam = NoSexesCheckMarried
+  let ifam (ifam, _, _, _) =
+    ifam
 
   let marriage_date (_, fam, (_, _, _), m_auth) =
     if m_auth then Adef.od_of_cdate (get_marriage fam) else None
@@ -1215,9 +577,7 @@ module Family = struct
          Wiki.wi_person_exists = person_exists conf base;
          Wiki.wi_always_show_link = conf.wizard || conf.friend}
       in
-      let s = Wiki.syntax_links conf wi (String.concat "\n" lines) in
-      let s = Util.replace_quotes s in
-      if conf.pure_xhtml then Util.check_xhtml s else s
+      Wiki.syntax_links conf wi (String.concat "\n" lines)
     else ""
 
   let marriage_source conf base (_, fam, _, m_auth) =
@@ -1232,37 +592,17 @@ module Family = struct
          Wiki.wi_person_exists = person_exists conf base;
          Wiki.wi_always_show_link = conf.wizard || conf.friend}
       in
-      let s = Wiki.syntax_links conf wi (String.concat "\n" lines) in
-      let s = Util.replace_quotes s in
-      if conf.pure_xhtml then Util.check_xhtml s else s
+      Wiki.syntax_links conf wi (String.concat "\n" lines)
     else ""
 
-  let mother (_, _, (_, imoth, _), _) =
-    if env.f_link = None then imoth else raise Not_found
+  let mother (_, _, (_, imoth, _), _) = imoth
 
   let nb_children (_, fam, _, _) =
     Array.length (get_children fam)
 
-  let on_marriage_date conf (_, fam, _, m_auth) =
-    if m_auth then
-      match Adef.od_of_cdate (get_marriage fam) with
-      | Some s ->
-        begin match p_getenv conf.base_env "long_date" with
-          | Some "yes" ->
-            Date2.string_of_ondate conf s ^ Date2.get_wday conf s
-          | _ -> Date2.string_of_ondate conf s
-        end
-      | _ -> raise Not_found
-    else raise Not_found
-
   let origin_file conf base (_, fam, _, _) =
     if conf.wizard then sou base (get_origin_file fam)
     else raise Not_found
-
-  let set_infinite_desc_level (ifam, _, _, _) =
-    let levt = get_env env.desc_level_table in
-    let (_, flevt) = Lazy.force levt in
-    flevt.(Adef.int_of_ifam ifam) <- Perso.infinite; ""
 
   let spouse_iper (_, _, (_, _, ip), _) = ip
 
@@ -1276,9 +616,93 @@ module Event = struct
   let date (_, d, _, _, _, _, _) =
     Adef.od_of_cdate d
 
+  let place conf base (_, _, p, _, _, _, _) =
+    Util.string_of_place conf (sou base p)
+
   let spouse base (_, _, _, _, _, _, isp) =
     match isp with
     | Some isp -> poi base isp
     | None -> raise Not_found
+
+  let src base (_, _, _, _, s, _, _) =
+    sou base s
+
+  let kind base (n, _, _, _, _, _, _) =
+    match n with
+    | Geneweb.Perso.Pevent Epers_Birth -> "EPERS_BIRTH"
+    | Pevent Epers_Baptism -> "EPERS_BAPTISM"
+    | Pevent Epers_Death -> "EPERS_DEATH"
+    | Pevent Epers_Burial -> "EPERS_BURIAL"
+    | Pevent Epers_Cremation -> "EPERS_CREMATION"
+    | Pevent Epers_Accomplishment -> "EPERS_ACCOMPLISHMENT"
+    | Pevent Epers_Acquisition -> "EPERS_ACQUISITION"
+    | Pevent Epers_Adhesion -> "EPERS_ADHESION"
+    | Pevent Epers_BaptismLDS -> "EPERS_BAPTISMLDS"
+    | Pevent Epers_BarMitzvah -> "EPERS_BARMITZVAH"
+    | Pevent Epers_BatMitzvah -> "EPERS_BATMITZVAH"
+    | Pevent Epers_Benediction -> "EPERS_BENEDICTION"
+    | Pevent Epers_ChangeName -> "EPERS_CHANGENAME"
+    | Pevent Epers_Circumcision -> "EPERS_CIRCUMCISION"
+    | Pevent Epers_Confirmation -> "EPERS_CONFIRMATION"
+    | Pevent Epers_ConfirmationLDS -> "EPERS_CONFIRMATIONLDS"
+    | Pevent Epers_Decoration -> "EPERS_DECORATION"
+    | Pevent Epers_DemobilisationMilitaire -> "EPERS_DEMOBILISATIONMILITAIRE"
+    | Pevent Epers_Diploma -> "EPERS_DIPLOMA"
+    | Pevent Epers_Distinction -> "EPERS_DISTINCTION"
+    | Pevent Epers_Dotation -> "EPERS_DOTATION"
+    | Pevent Epers_DotationLDS -> "EPERS_DOTATIONLDS"
+    | Pevent Epers_Education -> "EPERS_EDUCATION"
+    | Pevent Epers_Election -> "EPERS_ELECTION"
+    | Pevent Epers_Emigration -> "EPERS_EMIGRATION"
+    | Pevent Epers_Excommunication -> "EPERS_EXCOMMUNICATION"
+    | Pevent Epers_FamilyLinkLDS -> "EPERS_FAMILYLINKLDS"
+    | Pevent Epers_FirstCommunion -> "EPERS_FIRSTCOMMUNION"
+    | Pevent Epers_Funeral -> "EPERS_FUNERAL"
+    | Pevent Epers_Graduate -> "EPERS_GRADUATE"
+    | Pevent Epers_Hospitalisation -> "EPERS_HOSPITALISATION"
+    | Pevent Epers_Illness -> "EPERS_ILLNESS"
+    | Pevent Epers_Immigration -> "EPERS_IMMIGRATION"
+    | Pevent Epers_ListePassenger -> "EPERS_LISTEPASSENGER"
+    | Pevent Epers_MilitaryDistinction -> "EPERS_MILITARYDISTINCTION"
+    | Pevent Epers_MilitaryPromotion -> "EPERS_MILITARYPROMOTION"
+    | Pevent Epers_MilitaryService -> "EPERS_MILITARYSERVICE"
+    | Pevent Epers_MobilisationMilitaire -> "EPERS_MOBILISATIONMILITAIRE"
+    | Pevent Epers_Naturalisation -> "EPERS_NATURALISATION"
+    | Pevent Epers_Occupation -> "EPERS_OCCUPATION"
+    | Pevent Epers_Ordination -> "EPERS_ORDINATION"
+    | Pevent Epers_Property -> "EPERS_PROPERTY"
+    | Pevent Epers_Recensement -> "EPERS_RECENSEMENT"
+    | Pevent Epers_Residence -> "EPERS_RESIDENCE"
+    | Pevent Epers_Retired -> "EPERS_RETIRED"
+    | Pevent Epers_ScellentChildLDS -> "EPERS_SCELLENTCHILDLDS"
+    | Pevent Epers_ScellentParentLDS -> "EPERS_SCELLENTPARENTLDS"
+    | Pevent Epers_ScellentSpouseLDS -> "EPERS_SCELLENTSPOUSELDS"
+    | Pevent Epers_VenteBien -> "EPERS_VENTEBIEN"
+    | Pevent Epers_Will -> "EPERS_WILL"
+    | Fevent Efam_Marriage -> "EFAM_MARRIAGE"
+    | Fevent Efam_NoMarriage -> "EFAM_NO_MARRIAGE"
+    | Fevent Efam_NoMention -> "EFAM_NO_MENTION"
+    | Fevent Efam_Engage -> "EFAM_ENGAGE"
+    | Fevent Efam_Divorce -> "EFAM_DIVORCE"
+    | Fevent Efam_Separated -> "EFAM_SEPARATED"
+    | Fevent Efam_Annulation -> "EFAM_ANNULATION"
+    | Fevent Efam_MarriageBann -> "EFAM_MARRIAGE_BANN"
+    | Fevent Efam_MarriageContract -> "EFAM_MARRIAGE_CONTRACT"
+    | Fevent Efam_MarriageLicense -> "EFAM_MARRIAGE_LICENSE"
+    | Fevent Efam_PACS -> "EFAM_PACS"
+    | Fevent Efam_Residence -> "EFAM_RESIDENCE"
+    | Pevent Epers_Name s -> sou base s
+    | Fevent Efam_Name s -> sou base s
+
+  let name conf base (n, _, _, _, _, _, _) =
+    match n with
+    | Geneweb.Perso.Pevent name -> Util.string_of_pevent_name conf base name
+    | Fevent name -> Util.string_of_fevent_name conf base name
+
+  let note base (_, _, _, n, _, _, _) =
+    sou base n
+
+  let witnesses (_, _, _, _, _, w, _) =
+    w
 
 end
