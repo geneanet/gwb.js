@@ -1,6 +1,7 @@
 #use "topfind" ;;
 #require "jingoo" ;;
 
+open Jingoo
 open Jg_types
 
 let compile dir filename =

@@ -434,8 +434,11 @@ let open_base name =
   let open Js_of_ocaml in
   ( name
   , fun ~__LOC__:_ request ->
+    let url =
+      Printf.sprintf "http://localhost:8529/_db/Trees/geneweb/%s/%s" name request
+    in
     let xhr = XmlHttpRequest.create () in
-    xhr##_open (Js.string "GET") (Js.string request) (Js._false) ;
+    xhr##_open (Js.string "GET") (Js.string url) (Js._false) ;
     xhr##overrideMimeType (Js.string "text/plain; charset=x-user-defined") ;
     xhr##send (Js.null) ;
     if xhr##.status <> 200 then failwith @@ Printf.sprintf "%s:%s" __LOC__ request ;

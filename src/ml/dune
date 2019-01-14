@@ -1,5 +1,17 @@
+(library
+ (name gwdb)
+ (wrapped false)
+ (preprocess (pps js_of_ocaml-ppx))
+ (libraries yojson js_of_ocaml geneweb.def geneweb.wserver geneweb.util geneweb.io)
+ (modules gwdb)
+ (flags       (:standard -no-keep-locs))
+)
+
+
 (executable
  (name gwb)
  (preprocess (pps js_of_ocaml-ppx))
- (libraries geneweb gwdb yojson js_of_ocaml jingoo)
+ (libraries gwdb geneweb yojson js_of_ocaml jingoo)
+ (modules Conf Data Ezgw Gwb Templates)
+ (flags       (:standard -no-keep-locs))
 )

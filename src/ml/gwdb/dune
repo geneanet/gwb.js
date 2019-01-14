@@ -1,8 +1,0 @@
-(library
- (name gwdb)
- (wrapped false)
- (preprocess (pps js_of_ocaml-ppx))
- (libraries geneweb geneweb.def geneweb.util yojson js_of_ocaml)
- (modules gwdb json)
- (flags       (:standard -no-keep-locs))
-)
