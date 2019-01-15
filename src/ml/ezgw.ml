@@ -315,14 +315,20 @@ module Person = struct
       let f = foi base ifam in
       let fath = poi base @@ get_father f in
       let moth = poi base @@ get_mother f in
-      let filter = fun (acc : iper list) i ->
+      let filter = fun ((parent, siblings) as acc : iper * iper list) i ->
         if i = ifam then acc else
-          Array.fold_right
-            (fun i acc -> if i <> ip then i :: acc else acc)
-            (get_children (foi base i)) acc
+          ( parent
+          , Array.fold_right
+              (fun i acc -> if i <> ip then i :: acc else acc)
+              (get_children (foi base i)) siblings)
       in
-      Array.fold_left
-        filter (Array.fold_left filter [] (get_family fath)) (get_family moth)
+      let fath = Array.fold_left filter (get_father f, []) (get_family fath) in
+      let moth = Array.fold_left filter (get_mother f, []) (get_family moth) in
+      begin match fath, moth with
+        | (_, []), (_, []) -> []
+        | (_, []), x | x, (_, []) -> [ x ]
+        | f, m -> [ f ; m ]
+      end
     | None -> []
 
   let static_max_ancestor_level conf base p =

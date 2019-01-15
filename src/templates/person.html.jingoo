@@ -3,26 +3,11 @@
 <h1>{{ ind.first_name }} {{ ind.surname }}</h1>
 
 {% include 'perso_summary.jingoo' %}
+{% include 'perso_parents.jingoo' %}
+{% include 'perso_unions.jingoo' %}
+{% include 'perso_siblings.jingoo' %}
+{% include 'perso_timeline.jingoo' %}
 
-{%- if ind.father -%}
-  <p>Father: {{ person_link (ind.father) }}</p>
-{%- endif -%}
-
-{%- if ind.mother -%}
-  <p>Mother: {{ person_link (ind.mother) }}</p>
-{%- endif -%}
-
-<p>
-  {%- if ind.children -%}
-    <ul>
-      {%- for c in ind.children -%}
-        <li>{{ person_link(c) }}</li>
-      {%- endfor -%}
-    </ul>
-  {%- else -%}
-    No children!
-  {%- endif -%}
-</p>
-
-<button onclick="Page.timeline('{{ ind.iper }}')">Timeline</button>
 <button onclick="Page.summary()">Back to home</button>
+
+<button onclick="Page.tree('{{ind.iper}}')">Tree</button>

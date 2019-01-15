@@ -629,12 +629,16 @@ let foi_batch = fun ((_, get) as base) ifams ->
             x)
       |> List.flatten
 
-let poi_cache = Hashtbl.create 42
+let poi_cache = Hashtbl.create 2048
 
 (* FIXME *)
 let poi (_, get) iper =
+  print_endline @@ Printf.sprintf "%s: %s" __LOC__ iper ;
   if iper = dummy_iper then raise Not_found ;
-  try Hashtbl.find poi_cache iper
+  try
+    let x = Hashtbl.find poi_cache iper in
+    print_endline @@ Printf.sprintf "Found in cache: %s" iper ;
+    x
   with Not_found ->
     let x =
       match Yojson.Basic.from_string @@

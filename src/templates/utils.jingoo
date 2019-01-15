@@ -1,5 +1,25 @@
-{% macro person_link (p) -%}
-  <a href="#" onclick="Page.person('{{p.iper}}')">
-    {{ p.first_name }} {{ p.surname }}
-  </a>
+{%- macro onclick_page_person (i) -%}onclick="Page.person('{{ i }}')"{%- endmacro -%}
+{%- macro person_link_aux (p) -%}{{ onclick_page_person(p.iper) }}{%- endmacro -%}
+
+{%- macro person_link (p) -%}
+  <a {{ person_link_aux (p) }}>{{ p.first_name }} {{ p.surname }}</a>
+{%- endmacro -%}
+
+{%- macro short_display_person(xx) -%}
+  {{ person_link (xx) }} {{ xx.title }}{{ xx.dates }}
+{%- endmacro -%}
+
+{%- macro onclick_page_family (i) -%}onclick="Page.family('{{ i }}')"{%- endmacro -%}
+{%- macro family_link_aux (f) -%}href="#" {{ onclick_page_person(f.ifam) }}{%- endmacro -%}
+
+{% macro long_married(ff, xx) -%}
+  {{ short_display_person (ff.spouse) }}
+  {% if ff.marriage_date or ff.marriage_date -%}
+    <em>
+      {%- if ff.marriage_date -%}{{ Date.string_of_on_date (ff.marriage_date) }}{%- endif -%}
+      {%- if ff.marriage_place -%}
+        {%- if ff.marriage_date %}, {% endif -%}{{ ff.marriage_place }}
+      {%- endif -%}
+    </em>
+  {%- endif -%}
 {%- endmacro %}

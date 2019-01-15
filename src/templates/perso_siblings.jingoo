@@ -1,0 +1,30 @@
+{%- if ind.siblings or ind.half_siblings -%}
+  <section>
+    <article>
+      {%- if ind.siblings -%}
+        <h2>{{ translate.transl ('siblings') | capitalize }}</h2>
+        <ul>
+          {%- for s in ind.siblings -%}
+            <li>{{ short_display_person (s) }}</li>
+          {%- endfor -%}
+        </ul>
+      {%- endif -%}
+      {%- if ind.half_siblings -%}
+        <h2>{{ translate.transl ('half siblings') | capitalize }}</h2>
+        <ul>
+          {%- for (p, siblings) in ind.half_siblings -%}
+            <li>
+              {{ short_display_person (p) }}
+              <ul>
+                {%- for s in siblings -%}
+                  <li>{{ short_display_person (s) }}</li>
+                {%- endfor -%}
+              </ul>
+            </li>
+          {%- endfor -%}
+        {%- endif -%}
+    </article>
+  </section>
+{% else %}
+  <section><p>No Siblings.</p></section>
+{%- endif -%}

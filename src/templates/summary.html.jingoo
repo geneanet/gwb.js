@@ -1,26 +1,34 @@
-<h1>Database summary</h1>
-<p>Number of persons: {{ data.nb_of_persons }}</p>
-<p>Number of families: {{ data.nb_of_families }}</p>
+<section>
 
-<p>
-  <form onsubmit="return (function () {
+  <h1>Database summary</h1>
+
+  <p>
+    <p>Number of persons: {{ data.nb_of_persons }}</p>
+    <p>Number of families: {{ data.nb_of_families }}</p>
+  </p>
+
+  <p>
+    <h2>{{ translate.transl ('search') | capitalize }}</h2>
+    <form onsubmit="return (function () {
                   var fn = document.getElementById('i_fn').value ;
                   var sn = document.getElementById('i_sn').value ;
                   var occ = document.getElementById('i_occ').value ;
                   Page.searchPerson (fn, sn, occ) ;
                   return false ;
                   })()">
-                  <input id="i_fn" placeholder="First name" type="text">
-                  <input id="i_sn" placeholder="Last name" type="text">
-                  <input id="i_occ" placeholder="OCC" type="text" value="0">
-                  <button type="submit">Search</button>
-  </form>
-</p>
+      <input id="i_fn" placeholder="{{ translate.nth ('first name/first names', 0) | capitalize }}" type="text">
+      <input id="i_sn" placeholder="{{ translate.nth ('surname/surnames', 0) | capitalize }}" type="text">
+      <input id="i_occ" placeholder="OCC" type="{{ translate.transl ('number') }}" value="0">
+      <button type="submit">{{ translate.transl ('search') | capitalize }}</button>
+    </form>
+  </p>
 
-<p>
-  <button onclick="Page.person('pierfit:' + {{ data.random_iper }})">See a random person</button>
-</p>
+  <p>
+    <button onclick="Page.person('pierfit:' + {{ data.random_iper }})">See a random person</button>
+  </p>
 
-<p>
-  <button onclick="Page.oldestAlive()">See oldest alive</button>
-</p>
+  <p>
+    <button onclick="Page.oldestAlive()">See oldest alive</button>
+  </p>
+
+</section>

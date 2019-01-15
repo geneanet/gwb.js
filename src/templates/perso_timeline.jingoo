@@ -1,0 +1,33 @@
+{%- include 'utils.jingoo' -%}
+
+{%- macro print_event (event) -%}
+  {%- if event.date -%}<span>{{ DATE.string_of_ondate (event.date) }}{{ translate.transl(':') }}</span>
+  {%- else -%}<span><i>--- :<i></span>
+  {%- endif -%}
+  <span>
+    {{ event.name | capitalize }}
+    {%- if event.spouse -%}({{ translate.transl ('with') }} {{ event.spouse }}){%- endif -%}
+    {%- if event.place -%} - {{ event.place }} {%- endif -%}
+  </span>
+  {%- if event.note -%}<div>{{ event.note }}</div>{%- endif -%}
+  {%- if event.witnesses -%}
+    <p>
+      {%- for w in event.witnesses -%};
+        <span>{{ w.kind | capitalize }} :</span>{{ short_display_person (w) }}<br/>
+      {%- endfor -%}
+    </p>
+  {%- endif -%}
+  {%- if event.src -%}
+    {%- if not event.witnesses -%}<br/>{%- endif -%}
+    <span>{{ translate.nth ('source/sources', 1) | capitalize }}: {{ event.src }}</span>
+  {%- endif -%}
+{%- endmacro -%}
+
+{%- if ind.events -%}
+  <section>
+    <h2>{{ translate.transl ('time line') | capitalize }}</h2>
+  </section>
+  <ul>
+    {%- for e in ind.events | sort (reverse=true, attribute="date") -%}<li>{{ print_event (e) }}</li>{%- endfor -%}
+  </ul>
+{%- endif -%}

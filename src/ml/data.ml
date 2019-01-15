@@ -43,7 +43,7 @@ let rec mk_family (conf : Config.config) base fcd =
     else Tnull
   in
   let children =
-    Tlazy (lazy (Tarray (Array.map (get_n_mk_person conf base) (E.children fcd)) ) )
+    Tlazy (lazy (Tlist (get_n_mk_persons conf base @@ Array.to_list (E.children fcd)) ) )
   in
   let marriage_date = mk_opt (mk_date conf) (E.marriage_date fcd) in
   let marriage_place = get_str (E.marriage_place base) in
@@ -57,9 +57,8 @@ let rec mk_family (conf : Config.config) base fcd =
   let ifam = Tstr (Gwdb.string_of_ifam @@ E.ifam fcd) in
   let has_witnesses = get_bool E.has_witnesses in
   let witnesses =
-    Tlazy (lazy (get box_array @@
-                 fun fcd -> Array.map (get_n_mk_person conf base) @@
-                 E.witnesses fcd))
+    Tlazy (lazy (get box_list @@
+                 fun fcd -> get_n_mk_persons conf base @@ Array.to_list @@ E.witnesses fcd))
   in
   let origin_file = Tlazy (lazy (get_str (E.origin_file conf base))) in
   Tpat (function
@@ -233,14 +232,14 @@ and module_date conf =
     )
 
 and get_n_mk_person conf base (i : Gwdb.iper) =
-  (* TODO: ensure security *)
-  (* get_access *)
-  (* is_hide_names *)
-  let p = Gwdb.poi base i in
-  unsafe_mk_person conf base @@
-  if Util.authorized_age conf base p
-  then p
-  else Gwdb.empty_person base i
+  print_endline __LOC__ ;
+  let x = unsafe_mk_person conf base (Gwdb.poi base i) in
+  print_endline __LOC__ ;
+  x
+
+and get_n_mk_persons conf base (i : Gwdb.iper list) =
+  Gwdb.poi_batch base i
+  |> List.map (unsafe_mk_person conf base)
 
 and mk_relation conf base r =
   let module E = Ezgw.Relation in
@@ -348,9 +347,7 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
   let burial = get (mk_burial conf) E.burial in
   let burial_place = get_str (E.burial_place conf base) in
   let children =
-    box_lazy @@
-    lazy (box_list @@
-          List.map (get_n_mk_person conf base) (E.children base p))
+    box_lazy @@ lazy (box_list @@ get_n_mk_persons conf base (E.children base p))
   in
   let consanguinity = get_float (E.consanguinity) in
   let cop = get_str (Util.child_of_parent conf base) in
@@ -415,11 +412,11 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
           E.relations p)
   in
   let sex = get_int E.sex in
-  let siblings_aux fn =
-    Tlazy (lazy (Tlist (fn base p |> List.map (fun i -> Tlazy (lazy (get_n_mk_person conf base i))))))
-  in
-  let siblings = siblings_aux E.siblings in
-  let half_siblings = siblings_aux E.half_siblings in
+  let siblings = Tlazy (lazy (Tlist (get_n_mk_persons conf base @@ E.siblings base p))) in
+  let half_siblings = Tlazy (lazy (Tlist (let parents, siblings = List.split @@ E.half_siblings base p in
+                                          List.map2 (fun parent siblings -> Tset [ parent ; Tlist siblings ] )
+                                            (get_n_mk_persons conf base parents)
+                                            (List.map (get_n_mk_persons conf base) siblings)))) in
   let source_baptism = get_str @@ E.source_baptism base in
   let source_birth = get_str @@ E.source_birth base in
   let source_burial = get_str @@ E.source_burial base in
@@ -977,25 +974,32 @@ let mk_i18n conf =
 (* TODO: remove base *)
 let translate conf (* base *) =
   let decline = func_arg2_no_kw @@ fun s1 s2 ->
+    print_endline __LOC__ ;
     try Tstr (Util.transl_decline conf (unbox_string s1) (unbox_string s2))
     with _ -> failwith_type_error_2 "translate" s1 s2
   in
-  let nth = func_arg2_no_kw @@ fun a1 a2 ->  match a1, a2 with
+  let nth = func_arg2_no_kw @@ fun a1 a2 ->
+    print_endline __LOC__ ;
+    match a1, a2 with
     | Tstr s, Tint i -> Tstr (Util.transl_nth conf s i)
     | Tstr s, Tstr i -> Tstr (Util.transl_nth conf s @@ int_of_string i)
     | _ -> failwith_type_error_2 "nth" a1 a2
   in
   let transl_a_of_b = func_arg2_no_kw @@ fun x y ->
+    print_endline __LOC__ ;
     try Tstr (Util.transl_a_of_b conf (unbox_string x) (unbox_string y))
     with _ -> failwith_type_error_2 "a_of_b" x y
   in
   let transl_a_of_gr_eq_gen_lev = func_arg2_no_kw @@ fun x y ->
+    print_endline __LOC__ ;
     try Tstr (Util.transl_a_of_gr_eq_gen_lev conf (unbox_string x) (unbox_string y))
     with _ -> failwith_type_error_2 "a_of_gr_eq_gen_lev" x y
   in
-  let transl = func_arg1_no_kw @@ fun x ->
+  let transl = func_arg1_no_kw @@
+    fun x ->
+    print_endline __LOC__ ;
     try Tstr (Util.transl conf (unbox_string x))
-    with _ -> failwith_type_error_1 "transl" x
+    with _ -> print_endline __LOC__ ; failwith_type_error_1 "transl" x
   in
   let ftransl = func_arg2_no_kw @@ fun x y ->
     match x, y with
@@ -1009,7 +1013,7 @@ let translate conf (* base *) =
                | "transl_a_of_b" -> transl_a_of_b
                | "transl_a_of_gr_eq_gen_lev" -> transl_a_of_gr_eq_gen_lev
                | "ftransl" -> ftransl
-               | x -> failwith x)
+               | x -> print_endline __LOC__ ; failwith x)
 
 let decode_varenv =
   func_arg1_no_kw @@ fun str ->

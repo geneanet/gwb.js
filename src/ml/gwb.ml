@@ -9,7 +9,6 @@ module Page = struct
   open Jg_types
 
   let interp template models =
-    Printexc.record_backtrace true ;
     try
       let ast : Jg_types.ast = Marshal.from_string template 0 in
       let buf = Buffer.create 1024 in
@@ -26,8 +25,7 @@ module Page = struct
       ignore @@ List.fold_left (Jg_interp.eval_statement env) ctx ast ;
       Dom_html.document##.body##.innerHTML := Js.string (Buffer.contents buf)
     with e ->
-      Printexc.print_backtrace stdout ;
-      raise e
+      Dom_html.document##.body##.innerHTML := Js.string (Printexc.to_string e)
 
   let summary conf base =
     print_endline __LOC__ ;
@@ -55,6 +53,14 @@ module Page = struct
     let i = Js.to_string i in
     print_endline i ;
     person_aux conf base (Gwdb.iper_of_string i)
+
+  let tree conf base i =
+    print_endline __LOC__ ;
+    Firebug.console##log i ;
+    let i = Gwdb.iper_of_string @@ Js.to_string i in
+    interp Templates.tree @@
+    ("ind", Data.get_n_mk_person conf base i)
+    :: Data.default_env conf base
 
   let searchPerson conf_ base fn sn occ =
     print_endline @@ Printf.sprintf "%s:%s:%s:%d" __LOC__ (Js.to_string fn) (Js.to_string sn) occ ;
@@ -99,15 +105,16 @@ let init bname =
   let conf = Conf.conf in
   let o =
     object%js
-      method person = Page.person conf base
+      method person (i) = Page.person conf base i
+      method tree (i) = Page.tree conf base i
       method summary = Page.summary conf base
-      method searchPerson = Page.searchPerson conf base
+      method searchPerson (fn, sn, oc) = Page.searchPerson conf base fn sn oc
       method oldestAlive = Page.oldestAlive conf base
-      method timeline = Page.timeline conf base
+      method timeline (i) = Page.timeline conf base i
     end
   in
   Js.Unsafe.global##.Page := o ;
-  o##summary
+  o##searchPerson (Js.string "louis", Js.string "bourbon", 0)
 
   (* let ctx = ref [] in
    * 

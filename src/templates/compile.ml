@@ -58,14 +58,15 @@ let compile dir filename =
     | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
                 , [ LiteralExpr (Tstr s) ; LiteralExpr (Tint i) ]) ->
       LiteralExpr (Tstr (nth_field (try Hashtbl.find ht s with _ -> failwith s) i))
-    | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
-                , [ LiteralExpr (Tstr s) ; e ]) ->
-      let fn = func_arg1_no_kw @@ function
-        | Tint i -> Tstr (nth_field (try Hashtbl.find ht s with _ -> failwith s) i)
-        | x -> failwith_type_error_1 "translate.nth" x
-      in
-      ApplyExpr (LiteralExpr fn, [ e ])
-    | e -> e
+    (* | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
+     *             , [ LiteralExpr (Tstr s) ; e ]) ->
+     *   let s = try Hashtbl.find ht s with _ -> failwith s in
+     *   let fn = func_arg1_no_kw @@ function
+     *     | Tint i -> Tstr (nth_field s i)
+     *     | x -> failwith_type_error_1 "translate.nth" x
+     *   in
+     *   ApplyExpr (LiteralExpr fn, [ Jg_ast_mapper.default_mapper.expression self e ]) *)
+    | e -> Jg_ast_mapper.default_mapper.expression self e
   in
   if Filename.check_suffix filename ".html.jingoo" then begin
     let env = { Jg_types.autoescape = false
