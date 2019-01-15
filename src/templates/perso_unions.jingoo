@@ -1,0 +1,32 @@
+{%- if ind.families -%}
+  <section>
+    <article>
+      <h2>{{ translate.transl('mariage(s)') | capitalize }}</h2>
+      <ul>
+        {%- for f in ind.families -%}
+          <li>
+            {{ long_married(f, ind) }}
+            {%- if f.witnesses -%}
+              &nbsp;({{ translate.nth ('witness/witnesses', length (f.witnesses) - 1) }}
+              {%- for w in f.witnesses -%}
+                {% if loop.index0 %}, {% endif %}{{ short_display_person (w) }}
+              {%- endfor -%})
+            {%- endif -%}
+            {%- if f.are_divorced -%}, {{ translate.nth ('divorced', 0) }}{{ f.divorce_date }}{%- endif -%}
+            {%- if f.are_separated -%}, {{ translate.nth ('separated', 0) }}{%- endif -%}
+            {%- if f.children -%}
+              {{ translate.nth ('having as children', 0) }}
+              <ul>
+                {%- for c in f.children -%}
+                  <li>{{ short_display_person(c) }}</li>
+                {%- endfor -%}
+              </ul>
+            {%- endif -%}
+          </li>
+        {% endfor %}
+      </ul>
+    </article>
+  </section>
+{% else %}
+  <section><p>No unions.</p></section>
+{%- endif -%}
