@@ -1,5 +1,5 @@
 {% macro person_link (p) -%}
-  <a href="#" onclick="Page.person({{p.iper}})">
+  <a href="#" onclick="Page.person('{{p.iper}}')">
     {{ p.first_name }} {{ p.surname }}
   </a>
 {%- endmacro %}

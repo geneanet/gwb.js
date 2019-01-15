@@ -4,8 +4,70 @@
 open Jingoo
 open Jg_types
 
+(* Copy of Geneweb.Util.nth_field *)
+let nth_field_abs w n =
+  let rec start i n =
+    if n = 0 then i
+    else if i < String.length w then
+      match w.[i] with
+        '<' -> start (i + 2) n
+      | '/' -> start (i + 1) (n - 1)
+      | _ -> start (i + 1) n
+    else i
+  in
+  let rec stop i =
+    if i < String.length w then
+      match w.[i] with
+        '<' -> stop (i + 2)
+      | '/' -> i
+      | _ -> stop (i + 1)
+    else i
+  in
+  let i1 = start 0 n in let i2 = stop i1 in i1, i2
+let nth_field w n =
+  let (i1, i2) = nth_field_abs w n in
+  let (i1, i2) = if i2 = i1 then nth_field_abs w 0 else i1, i2 in
+  String.sub w i1 (i2 - i1)
+
 let compile dir filename =
-  if Filename.check_suffix filename ".jinja2" then begin
+  let ht = Hashtbl.create 2048 in
+  let input_lexicon lang fname =
+    let chan = open_in fname in
+    let foo = ref 0 in
+    let rec loop key () = match incr foo ; (input_line chan, key) with
+      | line, _ when String.length line < 4 -> loop key ()
+      | line, _ when String.sub line 0 4 = "    " -> loop (Some (String.trim line)) ()
+      | line, Some k ->
+        begin match String.index_opt line ':' with
+          | Some i when String.sub line 0 i = lang ->
+            Hashtbl.add ht k @@ String.sub line (i + 2) (String.length line - i - 2) ;
+            loop key ()
+          | _ -> loop key ()
+        end
+      | _ -> loop key ()
+      | exception End_of_file -> close_in chan
+    in
+    loop None ()
+  in
+  input_lexicon "fr" "/home/jsagot/workspace/geneanet.git/geneweb/gw_plus/gw/lang/lex_utf8.txt" ;
+  input_lexicon "fr" "/home/jsagot/workspace/geneanet.git/geneweb/gw_plus/gw/lang/geneanet_utf8.txt" ;
+  let expression self = function
+    | ApplyExpr ( DotExpr (IdentExpr "translate", "transl")
+                , [ LiteralExpr (Tstr s) ]) ->
+      LiteralExpr (Tstr (try Hashtbl.find ht s with _ -> failwith s))
+    | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
+                , [ LiteralExpr (Tstr s) ; LiteralExpr (Tint i) ]) ->
+      LiteralExpr (Tstr (nth_field (try Hashtbl.find ht s with _ -> failwith s) i))
+    | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
+                , [ LiteralExpr (Tstr s) ; e ]) ->
+      let fn = func_arg1_no_kw @@ function
+        | Tint i -> Tstr (nth_field (try Hashtbl.find ht s with _ -> failwith s) i)
+        | x -> failwith_type_error_1 "translate.nth" x
+      in
+      ApplyExpr (LiteralExpr fn, [ e ])
+    | e -> e
+  in
+  if Filename.check_suffix filename ".html.jingoo" then begin
     let env = { Jg_types.autoescape = false
               ; template_dirs = [ dir ]
               ; filters = []
@@ -23,7 +85,10 @@ let compile dir filename =
     let ast = Jg_interp.unfold_extends env ast in
     let ast = Jg_interp.inline_include env ast in
     let ast = Jg_interp.replace_blocks ast in
-    let var_name = Filename.basename @@ Filename.chop_suffix filename ".jinja2" in
+    let ast = Jg_interp.dead_code_elimination ast in
+    let mapper = { Jg_ast_mapper.default_mapper with expression } in
+    let ast = mapper.ast mapper ast in
+    let var_name = Filename.basename @@ Filename.chop_suffix filename ".html.jingoo" in
     print_string "let " ;
     print_string var_name ;
     print_string " = {|" ;

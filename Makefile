@@ -45,14 +45,10 @@ cordova-clean:
 	$(CORDOVA) clean browser
 #	$(CORDOVA) clean android
 
-electron-init:
+$(ELECTRON_BUILD_DIR) electron-init: $(BUILD_DIR)
 	electron-forge init $(APPNAME) && mv $(APPNAME) $(ELECTRON_BUILD_DIR)
-	rm -rf $(ELECTRON_BUILD_DIR).git
-	rm $(ELECTRON_BUILD_DIR).gitignore
-	rm $(ELECTRON_BUILD_DIR)src/index.html
-	rm $(ELECTRON_BUILD_DIR)src/index.js
 
-electron-build:
+electron-build: $(ELECTRON_BUILD_DIR)
 	cp $(JSFILE) src/electron/src/
 	$(RSYNC) src/electron/ $(ELECTRON_BUILD_DIR)
 

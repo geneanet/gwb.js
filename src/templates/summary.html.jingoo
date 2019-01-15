@@ -18,7 +18,7 @@
 </p>
 
 <p>
-  <button onclick="Page.person({{ data.random_iper }})">See a random person</button>
+  <button onclick="Page.person('pierfit:' + {{ data.random_iper }})">See a random person</button>
 </p>
 
 <p>

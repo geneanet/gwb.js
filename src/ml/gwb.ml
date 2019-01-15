@@ -4,29 +4,6 @@ open Js_of_ocaml
 open Dom_html
 open Jingoo
 
-let file_reader file callback =
-  let reader = new%js File.fileReader in
-  let () = reader##.onload := Dom.handler (fun e ->
-      Js.Opt.case
-        (e##.target)
-        (fun () -> Js.bool false)
-        (fun target ->
-           Js.Opt.case
-             (File.CoerceTo.string target##.result)
-             (fun () -> Js.bool false)
-             (fun result ->
-                callback (Js.to_bytestring result) ) ) ) (* caml_new_string *)
-  in
-  reader##readAsBinaryString file
-
-let input_file ?(multiple=false) () =
-  let x = createInput ~_type:(Js.string "file") document in
-  if multiple then x##setAttribute (Js.string "multiple") (Js.string "") ;
-  x
-
-let bname = "grimaldi"
-let bdir = bname ^ ".gwb/"
-
 module Page = struct
 
   open Jg_types
@@ -47,12 +24,13 @@ module Page = struct
       let ctx = Jg_interp.init_context ~env ~models ~output () in
       let ast = Jg_interp.import_macros env ctx ast in
       ignore @@ List.fold_left (Jg_interp.eval_statement env) ctx ast ;
-      Buffer.contents buf
+      Dom_html.document##.body##.innerHTML := Js.string (Buffer.contents buf)
     with e ->
       Printexc.print_backtrace stdout ;
       raise e
 
-  let summary base ctx =
+  let summary conf base =
+    print_endline __LOC__ ;
     interp Templates.summary @@
     let nbp = Gwdb.nb_of_persons base in
     let nbf = Gwdb.nb_of_families base in
@@ -63,18 +41,28 @@ module Page = struct
           | "nb_of_families" -> Tint nbf
           | "random_iper" -> Tint r
           | _ -> assert false)
-    ) :: ctx
+    ) :: Data.default_env conf base
 
-  let person base ctx i =
+  let person_aux conf base i =
+    print_endline __LOC__ ;
     interp Templates.person @@
-    ("ind", Data.get_n_mk_person conf base i) :: ctx
+    ("ind", Data.get_n_mk_person conf base i)
+    :: Data.default_env conf base
 
-  let searchPerson base ctx fn sn occ =
-    match Gwdb.person_of_key base fn sn occ with
-    | Some i -> person base ctx i
-    | None -> interp Templates.error ctx
+  let person conf base i =
+    print_endline __LOC__ ;
+    Firebug.console##log i ;
+    let i = Js.to_string i in
+    print_endline i ;
+    person_aux conf base (Gwdb.iper_of_string i)
 
-  let birth_death_aux base fn bool =
+  let searchPerson conf_ base fn sn occ =
+    print_endline @@ Printf.sprintf "%s:%s:%s:%d" __LOC__ (Js.to_string fn) (Js.to_string sn) occ ;
+    match Gwdb.person_of_key base (Js.to_string fn) (Js.to_string sn) occ with
+    | Some i -> person_aux conf base i
+    | None -> interp Templates.error []
+
+  let birth_death_aux conf base fn bool =
     List.map
       (fun (p, d, c) ->
          let person = Data.get_n_mk_person conf base (Gwdb.get_key_index p) in
@@ -85,14 +73,23 @@ module Page = struct
              | _ -> raise Not_found) )
       (fst @@ Geneweb.BirthDeath.select conf base fn bool)
 
-  let oldestAlive base ctx =
+  let oldestAlive conf base =
+    print_endline __LOC__ ;
     interp Templates.oldestAlive @@
     let get_oldest_alive p =
       match Gwdb.get_death p with
       | NotDead -> Adef.od_of_cdate (Gwdb.get_birth p)
       | _ -> None
     in
-    ("data", Tlist (birth_death_aux base get_oldest_alive true)) :: ctx
+    ("data", Tlist (birth_death_aux conf base get_oldest_alive true))
+    :: Data.default_env conf base
+
+  let timeline conf base i =
+    print_endline __LOC__ ;
+    let i = Js.to_string i in
+    interp Templates.timeline @@
+    ("root", Data.get_n_mk_person conf base @@ Gwdb.iper_of_string i)
+    :: Data.default_env conf base
 
 end
 
@@ -100,38 +97,51 @@ let init bname =
   let open Jg_types in
   let base = Gwdb.open_base bname in
   let conf = Conf.conf in
-  let show res = Dom_html.document##.body##.innerHTML := Js.string res ; Tnull in
-  let ctx = ref [] in
-  let page =
-    Tpat (function
-        | "person" ->
-          func_arg1_no_kw
-            (function Tstr i -> show @@ Page.person base !ctx (Gwdb.iper_of_string i)
-                    | x -> Jg_types.failwith_type_error_1 "person(iper)" x)
-        | "summary" ->
-          func_arg1_no_kw
-            (function Tnull -> show @@ Page.summary base !ctx
-                    | x -> Jg_types.failwith_type_error_1 "summary()" x)
-        | "searchPerson" ->
-          func_no_kw
-            (function
-              | [ Tstr fn ; Tstr sn ; Tint occ ] ->
-                show @@ Page.searchPerson base !ctx fn sn occ
-              | args ->
-                failwith_type_error "searchPerson(string,string,int)"
-                  (List.map (fun x -> ("", x)) args)
-            ) 3
-        | "oldestAlive" ->
-          func_arg1_no_kw
-            (function Tnull -> show @@ Page.oldestAlive base !ctx
-                    | x -> Jg_types.failwith_type_error_1 "oldestAlive()" x)
-        | x -> failwith x
-      )
+  let o =
+    object%js
+      method person = Page.person conf base
+      method summary = Page.summary conf base
+      method searchPerson = Page.searchPerson conf base
+      method oldestAlive = Page.oldestAlive conf base
+      method timeline = Page.timeline conf base
+    end
   in
-  ctx := ("Page", page) :: Data.default_env conf base ;
-  show @@ Page.summary base !ctx
+  Js.Unsafe.global##.Page := o ;
+  o##summary
 
+  (* let ctx = ref [] in
+   * 
+   * let page =
+   *   Tpat (function
+   *       | "person" ->
+   *         func_arg1_no_kw
+   *           (function Tstr i -> show @@ Page.person base !ctx (Gwdb.iper_of_string i)
+   *                   | x -> Jg_types.failwith_type_error_1 "person(iper)" x)
+   *       | "summary" ->
+   *         func_arg1_no_kw
+   *           (function Tnull -> show @@ Page.summary base !ctx
+   *                   | x -> Jg_types.failwith_type_error_1 "summary()" x)
+   *       | "searchPerson" ->
+   *         func_no_kw
+   *           (function
+   *             | [ Tstr fn ; Tstr sn ; Tint occ ] ->
+   *               show @@ Page.searchPerson base !ctx fn sn occ
+   *             | args ->
+   *               failwith_type_error "searchPerson(string,string,int)"
+   *                 (List.map (fun x -> ("", x)) args)
+   *           ) 3
+   *       | "oldestAlive" ->
+   *         func_arg1_no_kw
+   *           (function Tnull -> show @@ Page.oldestAlive base !ctx
+   *                   | x -> Jg_types.failwith_type_error_1 "oldestAlive()" x)
+   *       | x -> failwith x
+   *     )
+   * in
+   * ctx := ("Page", page) :: Data.default_env conf base ; *)
 
+let init () = init "pierfit"
+
+let _ = Js.export "GWB" (object%js method init () = init () end)
 
   (* let global = Obj.magic @@ ref 0 in
    * Worker.set_onmessage (fun e ->

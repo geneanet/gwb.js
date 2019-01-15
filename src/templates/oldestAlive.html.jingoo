@@ -1,4 +1,4 @@
-{% include 'utils.jinja2' %}
+{% include 'utils.jingoo' %}
 
 <h1>The {{ length (data) }} oldest perhaps still alive</h1>
 <ul>

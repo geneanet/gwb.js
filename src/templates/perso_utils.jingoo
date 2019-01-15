@@ -1,0 +1,253 @@
+{% set central_index = ind.iper %}
+
+{% macro fso (x) -%}
+  {{ x.first_name }}{% if x.occ %}.{{ x.occ }}{% endif %} {{ x.surname }}
+{%- endmacro %}
+
+{% macro link(p) -%}
+  <a href="{{ env.prefix }}{{ p.access }}" id="i{{ p.iper }}" >{{ p }}</a>
+  {{ p.date }}
+{%- endmacro %}
+
+{% macro ext_link(xx) -%}
+  {% if false {# env.prefix != conf.command #} %} {# FIXME #}
+    style="background:linear-gradient(transparent,transparent),url(data:image/svg+xml,%%3C%%3Fxml%%20version%%3D%%221.0%%22%%20encoding%%3D%%22UTF-8%%22%%3F%%3E%%3Csvg%%20xmlns%%3D%%22http%%3A%%2F%%2Fwww.w3.org%%2F2000%%2Fsvg%%22%%20width%%3D%%2210%%22%%20height%%3D%%2210%%22%%3E%%3Cg%%20transform%%3D%%22translate%%28-826.429%%20-698.791%%29%%22%%3E%%3Crect%%20width%%3D%%225.982%%22%%20height%%3D%%225.982%%22%%20x%%3D%%22826.929%%22%%20y%%3D%%22702.309%%22%%20fill%%3D%%22%%23fff%%22%%20stroke%%3D%%22%%2306c%%22%%2F%%3E%%3Cg%%3E%%3Cpath%%20d%%3D%%22M831.194%%20698.791h5.234v5.391l-1.571%%201.545-1.31-1.31-2.725%%202.725-2.689-2.689%%202.808-2.808-1.311-1.311z%%22%%20fill%%3D%%22%%2306f%%22%%2F%%3E%%3Cpath%%20d%%3D%%22M835.424%%20699.795l.022%%204.885-1.817-1.817-2.881%%202.881-1.228-1.228%%202.881-2.881-1.851-1.851z%%22%%20fill%%3D%%22%%23fff%%22%%2F%%3E%%3C%%2Fg%%3E%%3C%%2Fg%%3E%%3C%%2Fsvg%%3E) no-repeat right; padding-right:15px;" target="_blank" title="{{ i18n('[individual is from another tree]') }}"
+  {% endif %}
+{% endmacro %}
+
+{% macro li_SD(xx) -%}
+  <li style="vertical-align: middle;list-style-type: {% if xx.has_parents %}disc{% else %}circle{% endif %}">
+{%- endmacro %}
+
+{% macro li_SDC(xx) -%}
+  {% set cnt = namespace(val = 0) %}
+  {% for f in xx.families %}
+    {% if f.children %}{% set cnt.val = cnt.val + 1 %}{% endif %}
+  {% endfor %}
+  <li style="vertical-align:middle;list-style-type:
+    {%- if xx.families %}{% if cnt.val != 0 %}square{% else %}disc{% endif %}{% else %}circle{% endif %};">
+{%- endmacro %}
+
+{% macro image_MF(xx,wi_he) -%}
+  {% if xx != "x x" %}
+    <img width="{{ wi_he }}" height="{{ wi_he }}" style="border: none"
+         {% if xx.is_male %}
+           src="{{ conf.image_prefix }}male.png"
+           alt="{{ i18n('[M/F]0') }}"
+         {% elif xx.is_female %}
+           src="{{ conf.image_prefix }}female.png"
+           alt="{{ i18n('[M/F]1') }}"
+         {% else %}
+           src="{{ conf.image_prefix }}sexunknown.gif"
+           alt="?" title="?"
+         {% endif %}
+         />
+  {% endif %}
+{%- endmacro %}
+
+{% macro image_sosa(xxx,yyy) -%}
+  <img src="{{ conf.image_prefix }}sosa.png" alt="sosa"
+       title="{{ i18n('[*direct ancestor of %s:::' + xxx + '], [*Sosa] ' + yyy) }}" /> {# FIXME #}
+{%- endmacro %}
+
+{% macro display_sosa(xx) -%}
+  {% if xx.hasSosa and conf.benv.displaySosa == 'yes' %}
+    <a href="{{ env.prefix }}{{ xx.sosaLink }}">
+      {{ image_sosa(sosa_ref.first_name_key_strip + sosa_ref.surname_key_strip, xx.sosa) }}
+    </a>
+  {% endif %}
+{%- endmacro %}
+
+{% macro nav_with_sosa(xxx) -%}
+  {{ i18n('[*navigation with %t as Sosa reference:::' + xxx + ']') }}.{# FIXME #}
+{%- endmacro %}
+
+{% macro short_display_person(xx) -%}
+  {# {{ display_sosa(xx) }} #}
+  {% if xx.iper == central_index -%}
+    <b>{{ xx }}</b>
+  {%- elif xx.is_restricted -%}
+    {{ xx }}
+  {%- else -%}
+    <a {{ ext_link(xx) }} href="{{ env.prefix_base }}{{ xx.access }}{# prefix_base or prefix? #}
+       {%- if conf.benv.default_landing == 'tree' and (conf.wizard or conf.friend) -%}type=fiche{%- endif %}">
+       {{ xx }}
+    </a>
+  {%- endif -%}
+  {{ xx.title }}{{ xx.dates }}
+{%- endmacro %}
+
+{% macro print_title (nth, name, title, places, dates) %}
+{% endmacro %}
+
+{% macro long_display_person(xx) -%}
+  {# {{ display_sosa(xx) }} #}
+  {% if xx.iper == central_index %}<b>{{ xx }}</b>
+  {%- else -%}
+    {%- if xx.is_restricted -%}
+      {{ xx }}
+    {%- else -%}
+      <a {{ ext_link(xx) }}
+         href="{{ env.prefix_base }}{{ xx.access }}{# prefix_base or prefix? #}
+         {%- if conf.benv.default_landing == 'tree' and (wizard or friend) %}type=fiche{%- endif -%}">
+         {{ xx }}
+      </a>
+    {%- endif -%}
+    {%- for t in xx.nobility_titles -%}, {{ t }}{%- endfor -%}
+    <span style="font-size: 90%">
+      {%- if xx.on_birth_date %}, {{ i18n('[born]' + xx.sex) }} {{ xx.on_birth_date }}
+        {%- if xx.is_birthday %} ({{ i18n('[happy birthday to you!]') }}){%- endif -%}
+        {%- if xx.birth_place %} - {{ xx.birth_place }}{%- endif -%}
+      {%- elif xx.birth_place %}, {{ i18n('[born]' + xx.sex) }} - {{ xx.birth_place }}
+      {%- endif -%}
+      {%- if xx.on_baptism_date %}, {{ i18n('[baptized]' + xx.sex) }} {{ xx.on_baptism_date }}
+        {%- if xx.baptism_place %} - {{ xx.baptism_place }}{%- endif -%}
+      {%- else -%}
+        {%- if xx.baptism_place %}, {{ i18n('[baptized]' + xx.sex) }} - {{ xx.baptism_place }}{%- endif -%}
+      {%- endif -%}
+      {%- if xx.is_computable_age %}, [age] : {{ xx.age }} {%- endif -%}
+      {%- if xx.is_dead %}, {{ xx.died }}
+        {%- if xx.on_death_date %} {{ xx.on_death_date }}{%- endif -%}
+        {%- if xx.death_place %} - {{ xx.death_place }}{%- endif -%}
+        {%- if xx.is_computable_death_age %} {{ i18n('[age at death:]') }} {{ xx.death_age }}{%- endif -%}
+      {%- endif -%}
+      {%- if xx.is_buried %} , {{ i18n('[buried]' + xx.sex) }}
+        {%- if xx.on_burial_date %} {{ xx.on_burial_date }}{%- endif -%}
+        {%- if xx.on_burial_place %} - {{ xx.burial_place }}{%- endif -%}
+      {%- endif -%}
+      {%- if xx.is_cremated %} , {{ i18n('[cremated]' + xx.sex)}}
+        {%- if xx.on_cremation_date %} {{ xx.on_cremation_date }}{%- endif -%}
+        {%- if xx.on_cremation_place %} - {{ xx.cremation_place }}{%- endif -%}
+      {%- endif -%}
+      {%- if xx.hasOccupation %}, {{ xx.occupation | capitalize }}{%- endif -%}
+      {%- if ((conf.friend or conf.wizard) and xx.consanguinity and conf.benv.showConsang!="no") %}
+        {{ i18n('[relationship]') }}{{ xx.consanguinity }}{%- endif -%}
+    </span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro married_to(sexx, ff, date_place) -%}
+  {%- if sexx == 0 or sexx == 2 -%}
+    {%- if ff.are_married %}{{ i18n('[married%t to:::' + date_place + ']0') }}
+    {%- elif ff.are_not_married %}{{ i18n('[relationship%t to:::' + date_place + ']0') }}
+    {%- elif ff.are_engaged %}{{ i18n('[engaged%t to:::' + date_place + ']0') }}
+    {%- elif ff.is_no_sexes_check %}{{ i18n('[relationship%t to:::' + date_place + ']0') }}
+    {%- elif ff.is_no_mention %}{{ i18n('[relationship%t to:::' + date_place + ']0') }}
+    {%- endif -%}
+  {%- else -%}
+    {%- if ff.are_married %}{{ i18n('[married%t to:::' + date_place + ']1') }}
+    {%- elif ff.are_not_married %}{{ i18n('[relationship%t to:::' + date_place + ']1') }}
+    {%- elif ff.are_engaged %}{{ i18n('[engaged%t to:::' + date_place + ']1') }}
+    {%- elif ff.is_no_sexes_check %}{{ i18n('[relationship%t to:::' + date_place + ']1') }}
+    {%- elif ff.is_no_mention %}{{ i18n('[relationship%t to:::' + date_place + ']1') }}
+    {%- endif -%}
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro long_married(ff, xx) -%}
+  {%- if not ff.marriage_place -%}
+    {%- if ff.on_marriage_date -%}
+      {%- if ff.weddingBirthday %}
+        {% set date_place =
+        '<em>' + ff.on_marriage_date + ' (' + i18n('[happy birthday to them!]') + ')</em>' %}
+      {%- else -%}
+        {% set date_place = '<em>' + ff.on_marriage_date + '</em>' %}
+      {%- endif -%}
+    {%- else -%}
+      {% set date_place = '' %}
+    {%- endif -%}
+  {%- else -%}
+    {% if not ff.on_marriage_date %}
+      {% set date_place = '<em>, ' + ff.marriage_place + ', </em>' %}
+    {% else %}
+      {% if ff.weddingBirthday %}
+        {% set date_place =
+        '<em>' + ff.on_marriage_date + ' (' + i18n('[happy birthday to them!]')
+        + '), ' + ff.marriage_place +', </em>' %}
+      {% else %}
+        {% set date_place =
+        '<em>' + ff.on_marriage_date + '), ' + ff.marriage_place +', </em>' %}
+      {% endif %}
+    {% endif %}
+  {% endif %}
+  {{ married_to (xx.sex, ff, date_place) }}
+{%- endmacro %}
+
+{% macro short_display_siblings(xx) -%}
+  {{ li_SDC(xx) }}
+  {{ image_MF(xx,13) }}
+  {{ short_display_person(xx) }}
+  </li>
+{%- endmacro %}
+
+{% macro long_display_siblings(xx) -%}
+  {{ li_SDC(xx) }}
+  {{ image_MF(xx, 13) }}
+  {{ short_display_person(xx) }}
+  {% for f in xx.families %}
+    {% if loop.index0 %}
+      <br/><img src="{{ conf.image_prefix }}1pixel.png" width="13" height="13" alt=""/>
+      {# <em>{{ child }}{{ child.title }}{{ child.dates }}</em> #} {# FIXME #}
+    {% endif %}
+    <em> {{ '{{ long_married(f, xx) }}' | eval | capitalize }}</em>
+    {{ short_display_person(f.spouse) }}
+  {% endfor %}
+  </li>
+{%- endmacro %}
+
+{% macro witness_relation(xxx,yyy) -%}
+  {{ i18n('[*witness at marriage of %s and %s:::' + xxx + ':' + yyy + ']') }} {# FIXME #}
+{%- endmacro %}
+
+{% macro reference_person(param=null, p) -%}
+  <a href="{{ env.prefix }}{{ p.access }}{% if param %}&{{ param | map (join ('=')) | join ('&') }}{% endif %}" id="i{{ p.iper }}">
+    {%- if p.public_name %}{{ p.public_name }}
+    {%- else %}{{ p.first_name }}
+    {%- endif %}
+    {%- if p.qualifier %} <em>{{ p.qualifier }}</em>{% endif -%}
+    {%- if p.surname %} {{ p.surname }}{% endif -%}
+  </a>
+{%- endmacro %}
+
+{% macro string_of_sex_short(x) -%}
+  {%- if p.sex == 0 %}M
+  {%- elif p.sex == 1 %}F
+  {%- elif p.sex == 2 %}N
+  {%- endif %}
+{%- endmacro %}
+
+{% macro string_of_age(dmy) -%}
+  {%- if dmy.day == 0 and  dmy.month == 0 %}
+    {%- if dmy.year > 1 %}{{ dmy.year }}&nbsp;{{ translate.transl('years old') }}
+    {%- elif dmy.year == 1 %}{{ translate.transl('one year old') }}
+    {%- else %}{{ translate.transl(birth) }}
+    {%- endif %}
+  {%- elif dmy.day == 0 %}
+    {%- if dmy.year >= 2 %}{{ dmy.year }}&nbsp;{{ translate.transl('years old') }}
+    {%- elif dmy.year > 0 or dmy.month > 1 %}{{ dmy.year * 12 + dmy.month }}&nbsp;{{ translate.transl('month old') }}
+    {%- elif dmy.month == 1 %}{{ translate.transl('one month old') }}
+    {%- else %}{{ translate.transl('less than one month old') }}
+    {%- endif %}
+  {%- else %}
+    {%- if dmy.year >= 2 %}{{ dmy.year }}&nbsp;{{ translate.transl('years old') }}
+    {%- elif dmy.year > 0 or dmy.month > 1 %}{{ dmy.year * 12 + dmy.month }}&nbsp;{{ translate.transl('month old') }}
+    {%- elif dmy.month == 1 %}{{ translate.transl('one month old') }}
+    {%- elif dmy.day >= 2 %}{{ dmy.day }}&nbsp;{{ translate.transl('days old') }}
+    {%- elif dmy.day == 1 %}{{ translate.transl('one day old') }}
+    {%- else %}0
+    {%- endif %}
+  {%- endif %}
+{%- endmacro %}
+
+{%- function string_of_death (death, sex) -%}
+  {%- if not (string (death)) -%}
+    {%- if death.death_reason == "Killed" -%}{{ translate.nth ('killed (in action)', sex) }}
+    {%- elif death.death_reason == "Murdered" -%}{{ translate.nth ('murdered', sex) }}
+    {%- elif death.death_reason == "Executed" -%}{{ translate.nth ('executed (legally killed)', sex) }}
+    {%- elif death.death_reason == "Disappeared" -%}{{ translate.nth ('disappeared', sex) }}
+    {%- elif death.death_reason == "Unspecified" -%}{{ translate.nth ('died', sex) }}
+    {%- endif -%}
+  {%- elif death == "DeadYoung" -%}{{ translate.nth ('died young', sex) }}
+  {%- elif death == "DeadDontKnowWhen" -%}{{ translate.nth ('died', sex) }}
+  {%- endif -%}
+{%- endfunction -%}

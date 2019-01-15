@@ -200,6 +200,16 @@ and to_gregorian_aux calendar d =
 
 and module_date conf =
   let death_symbol = Date.death_symbol conf in
+  let string_of_ondate =
+    func_arg1_no_kw @@ fun d ->
+    Tlazy (lazy (Tstr (Date.string_of_ondate conf @@ Def.Dgreg (to_dmy d, Def.Dgregorian) ) ) )
+  in
+  let code_french_year =
+    func_arg1_no_kw (fun i -> box_string @@ Date.code_french_year conf (unbox_int i))
+  in
+  let string_of_age =
+    func_arg1_no_kw (fun d -> box_string @@ Date.string_of_age conf (to_dmy d) )
+  in
   Tpat (function
       | "calendar" -> func_arg2_no_kw (fun dst d ->
           (* let src = unbox_string @@ Jg_runtime.jg_obj_lookup d "calendar" in *)
@@ -214,10 +224,10 @@ and module_date conf =
       | "compare" -> date_compare
       | "death_symbol" ->
         Tstr death_symbol
-      | "code_french_year" ->
-        func_arg1_no_kw (fun i -> box_string @@ Date.code_french_year conf (unbox_int i))
+      | "code_french_year" -> code_french_year
       | "eq" -> date_eq
-      | "string_of_age" -> func_arg1_no_kw (fun d -> box_string @@ Date.string_of_age conf (to_dmy d) )
+      | "string_of_age" -> string_of_age
+      | "string_of_ondate" -> string_of_ondate
       | "sub" -> func_arg2_no_kw (fun d1 d2 -> mk_dmy @@ CheckItem.time_elapsed (to_dmy d2) (to_dmy d1))
       | _ -> raise Not_found
     )
@@ -331,6 +341,7 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
   let iper' = Gwdb.get_key_index p in
   let access = get_str (E.access conf base) in
   let age = get mk_dmy (E.age conf) in
+  let baptism_date = mk_opt (mk_date conf) (E.baptism_date p) in
   let baptism_place = get_str (E.baptism_place conf base) in
   let birth_date = mk_opt (mk_date conf) (E.birth_date p) in
   let birth_place = get_str (E.birth_place conf base) in
@@ -441,6 +452,7 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
                  (function
                    | "access" -> access
                    | "age" -> age
+                   | "baptism_date" -> baptism_date
                    | "baptism_place" -> baptism_place
                    | "birth_date" -> birth_date
                    | "birth_place" -> birth_place
@@ -585,7 +597,7 @@ and mk_death conf =
   | OfCourseDead -> wrap "OfCourseDead"
 
 and mk_burial conf = function
-  | Def.UnknownBurial -> Tstr "UnknownBurial"
+  | Def.UnknownBurial -> Tnull
   | Buried d ->
     let type_ = Tstr "Buried" in
     let date = match Adef.od_of_cdate d with
@@ -766,6 +778,18 @@ and mk_warning conf base =
                 ; mk_date conf (Dgreg (a, Dgregorian) ) ] ] (* gregorian?? *)
 
   | PossibleDuplicateFam _ -> assert false (* FIXME *)
+
+let now () =
+  let open Js_of_ocaml in
+  let now = new%js Js.date_now in
+  let day = Tint now##getDate in
+  let month = Tint (now##getMonth + 1) in
+  let year = Tint now##getFullYear in
+  Tpat (function "day" -> day
+               | "month" -> month
+               | "year" -> year
+               | "prec" -> Tstr "sure"
+               | _ -> raise Not_found)
 
 let mk_conf conf base =
   let _commd_no_params = Tnull in (* FIXME *)
@@ -1120,6 +1144,7 @@ let default_env conf base (* p *) =
   ("conf", conf_env)
   :: ("trans", trans)
   :: ("DATE", module_date conf)
+  :: ("now", now ())
   :: ("i18n", mk_i18n conf)
   :: ("env", mk_env conf)
   :: ("evar", evar)

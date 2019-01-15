@@ -52,6 +52,8 @@ module Person = struct
   let approx_death_place conf base p =
     snd (Util.get_approx_death_date_place conf base p)
 
+  let baptism_date p = Adef.od_of_cdate (get_baptism p)
+
   let bname_prefix conf = Util.commd conf
 
   let birth_date p = Adef.od_of_cdate (get_birth p)

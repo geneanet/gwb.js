@@ -16,7 +16,6 @@ module Json = struct
     | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
 
   let get_string ~__LOC__ js name =
-    (* print_endline __LOC__ ; *)
     to_string @@ J.member name js
 
   let get_int ~__LOC__:_ js name =
@@ -437,9 +436,9 @@ let open_base name =
     let url =
       Printf.sprintf "http://localhost:8529/_db/Trees/geneweb/%s/%s" name request
     in
+    print_endline @@ Printf.sprintf "%s: %s" __LOC__ url ;
     let xhr = XmlHttpRequest.create () in
     xhr##_open (Js.string "GET") (Js.string url) (Js._false) ;
-    xhr##overrideMimeType (Js.string "text/plain; charset=x-user-defined") ;
     xhr##send (Js.null) ;
     if xhr##.status <> 200 then failwith @@ Printf.sprintf "%s:%s" __LOC__ request ;
     Js.to_string xhr##.responseText
