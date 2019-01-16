@@ -123,6 +123,27 @@ let compile dir filename =
       let mapper = { Jg_ast_mapper.default_mapper with expression } in
       mapper.ast mapper ast
     in
+    let ast =
+      let statement self = function
+        | ExpandStatement (LiteralExpr (Tint _ | Tfloat _ | Tstr _ | Tnull as t)) ->
+          TextStatement (Jg_runtime.string_of_tvalue t)
+        | e -> Jg_ast_mapper.default_mapper.statement self e
+      in
+      let mapper = { Jg_ast_mapper.default_mapper with statement } in
+      mapper.ast mapper ast
+    in
+    let ast =
+      let flush str acc =
+        if str = [] then acc
+        else TextStatement (String.concat "" (List.rev str) ) :: acc
+      in
+      let rec loop str acc = function
+        | [] -> List.rev (flush str acc)
+        | TextStatement s :: tl -> loop (s :: str) acc tl
+        | s :: tl -> loop [] (s :: flush str acc) tl
+      in
+      loop [] [] ast
+    in
     let var_name = Filename.basename @@ Filename.chop_suffix filename ".html.jingoo" in
     print_string "let " ;
     print_string var_name ;
