@@ -54,19 +54,50 @@ module Page = struct
     print_endline i ;
     person_aux conf base (Gwdb.iper_of_string i)
 
-  let tree conf base i =
-    print_endline __LOC__ ;
-    Firebug.console##log i ;
-    let i = Gwdb.iper_of_string @@ Js.to_string i in
-    interp Templates.tree @@
-    ("ind", Data.get_n_mk_person conf base i)
-    :: Data.default_env conf base
+  (* let tree conf base i =
+   *   print_endline __LOC__ ;
+   *   Firebug.console##log i ;
+   *   let i = Gwdb.iper_of_string @@ Js.to_string i in
+   *   interp Templates.tree @@
+   *   ("ind", Data.get_n_mk_person conf base i)
+   *   :: Data.default_env conf base *)
 
   let searchPerson conf_ base fn sn occ =
-    print_endline @@ Printf.sprintf "%s:%s:%s:%d" __LOC__ (Js.to_string fn) (Js.to_string sn) occ ;
-    match Gwdb.person_of_key base (Js.to_string fn) (Js.to_string sn) occ with
-    | Some i -> person_aux conf base i
-    | None -> interp Templates.error []
+    let fn = Js.Optdef.case fn (fun () -> "") Js.to_string in
+    let sn = Js.Optdef.case sn (fun () -> "") Js.to_string in
+    print_endline @@ Printf.sprintf "%s:%s:%s:%d" __LOC__ fn sn occ ;
+    match fn, sn with
+    | "", "" ->
+      print_endline @@ Printf.sprintf "%s" __LOC__ ;
+      interp Templates.error []
+    | fn, "" ->
+      print_endline @@ Printf.sprintf "%s" __LOC__ ;
+      interp Templates.searchPerson @@
+      ( "param", Tpat (function "fn" -> Tstr fn | "sn" -> Tstr "" | _ -> raise Not_found) )
+      :: ( "data"
+         , Tlist (Data.get_n_mk_persons conf base @@
+                  Gwdb.spi_find (Gwdb.persons_of_first_name base) (Gwdb.istr_of_string fn) ) )
+      :: Data.default_env conf base
+    | "", sn ->
+      print_endline @@ Printf.sprintf "%s" __LOC__ ;
+      interp Templates.searchPerson @@
+      ( "param", Tpat (function "fn" -> Tstr "" | "sn" -> Tstr sn | _ -> raise Not_found) )
+      :: ( "data"
+         , Tlist (Data.get_n_mk_persons conf base @@
+                  Gwdb.spi_find (Gwdb.persons_of_surname base) (Gwdb.istr_of_string sn) ) )
+      :: Data.default_env conf base
+    | fn, sn ->
+      print_endline @@ Printf.sprintf "%s" __LOC__ ;
+      match Gwdb.person_of_key base fn sn occ with
+      | Some i -> person_aux conf base i
+      | None -> interp Templates.error []
+
+  let updatePerson conf base i =
+    let i = Gwdb.iper_of_string @@ Js.to_string i in
+    print_endline __LOC__ ;
+    interp Templates.updatePerson @@
+    ("ind", Data.get_n_mk_person conf base i)
+    :: Data.default_env conf base
 
   let birth_death_aux conf base fn bool =
     List.map
@@ -103,18 +134,15 @@ let init bname =
   let open Jg_types in
   let base = Gwdb.open_base bname in
   let conf = Conf.conf in
-  let o =
-    object%js
-      method person (i) = Page.person conf base i
-      method tree (i) = Page.tree conf base i
+  let _ =
+    Js.export "Page" @@ object%js
+      method person = Page.person conf base
       method summary = Page.summary conf base
-      method searchPerson (fn, sn, oc) = Page.searchPerson conf base fn sn oc
-      method oldestAlive = Page.oldestAlive conf base
-      method timeline (i) = Page.timeline conf base i
+      method searchPerson = Page.searchPerson conf base
+      method updatePerson = Page.updatePerson conf base
     end
   in
-  Js.Unsafe.global##.Page := o ;
-  o##searchPerson (Js.string "louis", Js.string "bourbon", 0)
+  Page.summary conf base
 
   (* let ctx = ref [] in
    * 

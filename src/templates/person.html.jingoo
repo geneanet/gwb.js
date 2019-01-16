@@ -2,6 +2,8 @@
 
 <h1>{{ ind.first_name }} {{ ind.surname }}</h1>
 
+<button onclick="Page.updatePerson('{{ind.iper}}')">{{ translate.transl ('modify') }}</button>
+
 {% include 'perso_summary.jingoo' %}
 {% include 'perso_parents.jingoo' %}
 {% include 'perso_unions.jingoo' %}

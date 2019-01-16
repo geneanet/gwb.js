@@ -51,23 +51,6 @@ let compile dir filename =
   in
   input_lexicon "fr" "/home/jsagot/workspace/geneanet.git/geneweb/gw_plus/gw/lang/lex_utf8.txt" ;
   input_lexicon "fr" "/home/jsagot/workspace/geneanet.git/geneweb/gw_plus/gw/lang/geneanet_utf8.txt" ;
-  let expression self = function
-    | ApplyExpr ( DotExpr (IdentExpr "translate", "transl")
-                , [ LiteralExpr (Tstr s) ]) ->
-      LiteralExpr (Tstr (try Hashtbl.find ht s with _ -> failwith s))
-    | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
-                , [ LiteralExpr (Tstr s) ; LiteralExpr (Tint i) ]) ->
-      LiteralExpr (Tstr (nth_field (try Hashtbl.find ht s with _ -> failwith s) i))
-    (* | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
-     *             , [ LiteralExpr (Tstr s) ; e ]) ->
-     *   let s = try Hashtbl.find ht s with _ -> failwith s in
-     *   let fn = func_arg1_no_kw @@ function
-     *     | Tint i -> Tstr (nth_field s i)
-     *     | x -> failwith_type_error_1 "translate.nth" x
-     *   in
-     *   ApplyExpr (LiteralExpr fn, [ Jg_ast_mapper.default_mapper.expression self e ]) *)
-    | e -> Jg_ast_mapper.default_mapper.expression self e
-  in
   if Filename.check_suffix filename ".html.jingoo" then begin
     let env = { Jg_types.autoescape = false
               ; template_dirs = [ dir ]
@@ -87,13 +70,64 @@ let compile dir filename =
     let ast = Jg_interp.inline_include env ast in
     let ast = Jg_interp.replace_blocks ast in
     let ast = Jg_interp.dead_code_elimination ast in
-    let mapper = { Jg_ast_mapper.default_mapper with expression } in
-    let ast = mapper.ast mapper ast in
+    let ast =
+      let expression self = function
+        | ApplyExpr ( DotExpr (IdentExpr "translate", "transl")
+                    , [ LiteralExpr (Tstr s) ]) ->
+          LiteralExpr (Tstr (try Hashtbl.find ht s with _ -> failwith s))
+        | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
+                    , [ LiteralExpr (Tstr s) ; LiteralExpr (Tint i) ]) ->
+          LiteralExpr (Tstr (nth_field (try Hashtbl.find ht s with _ -> failwith s) i))
+        (* | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
+         *             , [ LiteralExpr (Tstr s) ; e ]) ->
+         *   let s = try Hashtbl.find ht s with _ -> failwith s in
+         *   let fn = func_arg1_no_kw @@ function
+         *     | Tint i -> Tstr (nth_field s i)
+         *     | x -> failwith_type_error_1 "translate.nth" x
+         *   in
+         *   ApplyExpr (LiteralExpr fn, [ Jg_ast_mapper.default_mapper.expression self e ]) *)
+        | e -> Jg_ast_mapper.default_mapper.expression self e
+      in
+      let mapper = { Jg_ast_mapper.default_mapper with expression } in
+      mapper.ast mapper ast
+    in
+    let ast =
+      let expression self = function
+        | ApplyExpr (IdentExpr n , args) as e
+          when List.for_all (function KeywordExpr (IdentExpr _, LiteralExpr _)
+                                    | LiteralExpr _ -> true
+                                    | _ -> false) args
+               && Array.exists (fun (n', _) -> n' = n) Jg_runtime.std_filters
+          ->
+          let kwargs, args =
+            let rec loop kwargs args = function
+              | [] -> (kwargs, args)
+              | KeywordExpr (IdentExpr k, LiteralExpr v) :: tl ->
+                loop ((k, v) :: kwargs) args tl
+              | LiteralExpr v :: tl ->
+                loop kwargs (v :: args) tl
+              | _ -> assert false
+            in
+            loop [] [] args
+          in
+          let rec loop i =
+            let (n', fn) = Array.get Jg_runtime.std_filters i in
+            if n = n'
+            then match Jg_runtime.jg_apply ~kwargs fn args with
+              | Tfun _ -> Jg_ast_mapper.default_mapper.expression self e
+              | x -> LiteralExpr x
+            else loop (i + 1)
+          in loop 0
+        | e -> Jg_ast_mapper.default_mapper.expression self e
+      in
+      let mapper = { Jg_ast_mapper.default_mapper with expression } in
+      mapper.ast mapper ast
+    in
     let var_name = Filename.basename @@ Filename.chop_suffix filename ".html.jingoo" in
     print_string "let " ;
     print_string var_name ;
     print_string " = {|" ;
-    print_string @@ Marshal.to_string ast [ Marshal.Compat_32 ; Marshal.Closures ] ;
+    print_string @@ Marshal.to_string ast [ Marshal.Compat_32 ; Marshal.Closures ; Marshal.No_sharing ] ;
     print_endline "|}"
   end
 

@@ -1,0 +1,13 @@
+<section>
+  <article>
+    <h1>{{ translate.transl ('modify') }}{{ translate.transl (':') }} {{ ind.first_name }} {{ ind.surname }}</h1>
+    <form onsubmit="">
+      <input id="i_fn" placeholder="{{ translate.nth ('first name/first names', 0) | capitalize }}" type="text"
+             value="{{ ind.first_name }}" >
+      <input id="i_sn" placeholder="{{ translate.nth ('surname/surnames', 0) | capitalize }}" type="text"
+             value="{{ ind.surname }}" >
+      <input id="i_occ" placeholder="{{ translate.transl ('number') }}" type="number" value="{{ ind.occ }}">
+      <button type="submit">{{ translate.transl ('modify') | capitalize }}</button>
+    </form>
+  </article>
+</section>

@@ -91,10 +91,7 @@ and get_n_mk_family conf base ?(origin = Gwdb.dummy_iper) (ifam : Gwdb.ifam) cpl
                    else if imoth = origin then ifath
                    else origin)
   in
-  let m_auth =
-    Util.authorized_age conf base (Util.pget conf base ifath)
-    && Util.authorized_age conf base (Util.pget conf base imoth)
-  in
+  let m_auth = true in
   mk_family conf base (ifam, Gwdb.foi base ifam, cpl, m_auth)
 
 and date_compare = func_arg2_no_kw date_compare_aux
@@ -232,10 +229,7 @@ and module_date conf =
     )
 
 and get_n_mk_person conf base (i : Gwdb.iper) =
-  print_endline __LOC__ ;
-  let x = unsafe_mk_person conf base (Gwdb.poi base i) in
-  print_endline __LOC__ ;
-  x
+  unsafe_mk_person conf base (Gwdb.poi base i)
 
 and get_n_mk_persons conf base (i : Gwdb.iper list) =
   Gwdb.poi_batch base i
@@ -350,7 +344,6 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
     box_lazy @@ lazy (box_list @@ get_n_mk_persons conf base (E.children base p))
   in
   let consanguinity = get_float (E.consanguinity) in
-  let cop = get_str (Util.child_of_parent conf base) in
   let cremation_place = get_str (E.cremation_place conf base) in
   let date = get_str (Date.short_dates_text conf base) in
   let dates = get_str (E.dates conf base) in
@@ -422,14 +415,14 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
   let source_burial = get_str @@ E.source_burial base in
   let source_death = get_str @@ E.source_death base in
   let source_fsource =
-    box_array @@
-    Array.map box_string @@
-    E.source_fsource conf base p
+                            box_lazy @@ lazy (box_array @@
+                                              Array.map box_string @@
+                                              E.source_fsource conf base p)
   in
   let source_marriage =
-    box_array @@
-    Array.map box_string @@
-    E.source_marriage conf base p
+    box_lazy @@ lazy (box_array @@
+                      Array.map box_string @@
+                      E.source_marriage conf base p)
   in
   let source_psources = get_str @@ E.source_psources base in
   let static_max_ancestor_level =
@@ -456,7 +449,6 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
                    | "burial" -> burial
                    | "burial_place" -> burial_place
                    | "children" -> children
-                   | "cop" -> cop
                    | "cremation_place" -> cremation_place
                    | "consanguinity" -> consanguinity
                    | "date" -> date
@@ -621,7 +613,7 @@ and mk_warning conf base =
     let ifath = Gwdb.get_father cpl in
     let imoth = Gwdb.get_mother cpl in
     (* spouse if not used so it should be okay *)
-    mk_family conf base (ifam, Gwdb.foi base ifam, (ifath, imoth, imoth), true)
+    mk_family conf base (ifam, cpl, (ifath, imoth, imoth), true)
   in
   let array_of_list_map : 'a 'b . ('a -> 'b) -> 'a list -> 'b array =
     fun fn l ->
@@ -974,32 +966,27 @@ let mk_i18n conf =
 (* TODO: remove base *)
 let translate conf (* base *) =
   let decline = func_arg2_no_kw @@ fun s1 s2 ->
-    print_endline __LOC__ ;
     try Tstr (Util.transl_decline conf (unbox_string s1) (unbox_string s2))
     with _ -> failwith_type_error_2 "translate" s1 s2
   in
   let nth = func_arg2_no_kw @@ fun a1 a2 ->
-    print_endline __LOC__ ;
     match a1, a2 with
     | Tstr s, Tint i -> Tstr (Util.transl_nth conf s i)
     | Tstr s, Tstr i -> Tstr (Util.transl_nth conf s @@ int_of_string i)
     | _ -> failwith_type_error_2 "nth" a1 a2
   in
   let transl_a_of_b = func_arg2_no_kw @@ fun x y ->
-    print_endline __LOC__ ;
     try Tstr (Util.transl_a_of_b conf (unbox_string x) (unbox_string y))
     with _ -> failwith_type_error_2 "a_of_b" x y
   in
   let transl_a_of_gr_eq_gen_lev = func_arg2_no_kw @@ fun x y ->
-    print_endline __LOC__ ;
     try Tstr (Util.transl_a_of_gr_eq_gen_lev conf (unbox_string x) (unbox_string y))
     with _ -> failwith_type_error_2 "a_of_gr_eq_gen_lev" x y
   in
   let transl = func_arg1_no_kw @@
     fun x ->
-    print_endline __LOC__ ;
     try Tstr (Util.transl conf (unbox_string x))
-    with _ -> print_endline __LOC__ ; failwith_type_error_1 "transl" x
+    with _ -> failwith_type_error_1 "transl" x
   in
   let ftransl = func_arg2_no_kw @@ fun x y ->
     match x, y with

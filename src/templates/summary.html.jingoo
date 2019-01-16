@@ -2,10 +2,8 @@
 
   <h1>Database summary</h1>
 
-  <p>
-    <p>Number of persons: {{ data.nb_of_persons }}</p>
-    <p>Number of families: {{ data.nb_of_families }}</p>
-  </p>
+  <p>Number of persons: {{ data.nb_of_persons }}</p>
+  <p>Number of families: {{ data.nb_of_families }}</p>
 
   <p>
     <h2>{{ translate.transl ('search') | capitalize }}</h2>
@@ -13,12 +11,13 @@
                   var fn = document.getElementById('i_fn').value ;
                   var sn = document.getElementById('i_sn').value ;
                   var occ = document.getElementById('i_occ').value ;
+                  console.log (fn + ' ' + sn + ' ' + occ)
                   Page.searchPerson (fn, sn, occ) ;
                   return false ;
                   })()">
       <input id="i_fn" placeholder="{{ translate.nth ('first name/first names', 0) | capitalize }}" type="text">
       <input id="i_sn" placeholder="{{ translate.nth ('surname/surnames', 0) | capitalize }}" type="text">
-      <input id="i_occ" placeholder="OCC" type="{{ translate.transl ('number') }}" value="0">
+      <input id="i_occ" placeholder="{{ translate.transl ('number') }}" type="number" value="0">
       <button type="submit">{{ translate.transl ('search') | capitalize }}</button>
     </form>
   </p>

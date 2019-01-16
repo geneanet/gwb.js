@@ -6,11 +6,8 @@
 {%- endmacro -%}
 
 {%- macro short_display_person(xx) -%}
-  {{ person_link (xx) }} {{ xx.title }}{{ xx.dates }}
+  {{ person_link (xx) }}{{ xx.title }}{{ xx.dates }}
 {%- endmacro -%}
-
-{%- macro onclick_page_family (i) -%}onclick="Page.family('{{ i }}')"{%- endmacro -%}
-{%- macro family_link_aux (f) -%}href="#" {{ onclick_page_person(f.ifam) }}{%- endmacro -%}
 
 {% macro long_married(ff, xx) -%}
   {{ short_display_person (ff.spouse) }}

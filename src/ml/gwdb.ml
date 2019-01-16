@@ -432,11 +432,11 @@ let iper_of_int i =
 let open_base name =
   let open Js_of_ocaml in
   ( name
-  , fun ~__LOC__:_ request ->
+  , fun ~__LOC__:loc request ->
     let url =
       Printf.sprintf "http://localhost:8529/_db/Trees/geneweb/%s/%s" name request
     in
-    print_endline @@ Printf.sprintf "%s: %s" __LOC__ url ;
+    print_endline @@ Printf.sprintf "%s: %s" loc url ;
     let xhr = XmlHttpRequest.create () in
     xhr##_open (Js.string "GET") (Js.string url) (Js._false) ;
     xhr##send (Js.null) ;
@@ -582,7 +582,7 @@ let load_ascends_array _ = ()
 
 let sou _base istr = istr
 
-let foi_cache = Hashtbl.create 42
+let foi_cache = Hashtbl.create 1024
 
 let foi (_, get) ifam =
   if ifam = dummy_ifam then raise Not_found ;

@@ -7,13 +7,13 @@
   <span>
     {{ event.name | capitalize }}
     {%- if event.spouse -%}({{ translate.transl ('with') }} {{ event.spouse }}){%- endif -%}
-    {%- if event.place -%} - {{ event.place }} {%- endif -%}
+    {%- if event.place %} - {{ event.place }} {%- endif -%}
   </span>
   {%- if event.note -%}<div>{{ event.note }}</div>{%- endif -%}
   {%- if event.witnesses -%}
     <p>
       {%- for w in event.witnesses -%};
-        <span>{{ w.kind | capitalize }} :</span>{{ short_display_person (w) }}<br/>
+        <span>{{ w.kind | capitalize }}{{ translate.transl (':') }}</span>{{ short_display_person (w) }}<br/>
       {%- endfor -%}
     </p>
   {%- endif -%}
@@ -25,9 +25,15 @@
 
 {%- if ind.events -%}
   <section>
-    <h2>{{ translate.transl ('time line') | capitalize }}</h2>
+    <article>
+      <h2>{{ translate.transl ('time line') | capitalize }}</h2>
+      <ul>
+        {%- for e in ind.events | sort (attribute="date") -%}
+          <li>{{ print_event (e) }}</li>
+        {%- endfor -%}
+      </ul>
+    </article>
   </section>
-  <ul>
-    {%- for e in ind.events | sort (reverse=true, attribute="date") -%}<li>{{ print_event (e) }}</li>{%- endfor -%}
-  </ul>
+{%- else -%}
+  <section><p>No events.</p></section>
 {%- endif -%}
