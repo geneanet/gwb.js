@@ -92,6 +92,22 @@ module Page = struct
       | Some i -> person_aux conf base i
       | None -> interp Templates.error []
 
+  let doUpdatePerson conf base i fn sn occ =
+    let i = Gwdb.iper_of_string (Js.to_string i) in
+    let fn = Js.to_string fn in
+    let sn = Js.to_string sn in
+    let occ = occ in
+    let p = Gwdb.gen_person_of_person (Gwdb.poi base i) in
+    let () =
+      Gwdb.patch_person base i
+        { p with first_name = Gwdb.insert_string base fn
+               ; surname = Gwdb.insert_string base sn
+               ; occ = occ }
+    in
+    interp Templates.updatePerson @@
+    ("ind", Data.get_n_mk_person conf base i)
+    :: Data.default_env conf base
+
   let updatePerson conf base i =
     let i = Gwdb.iper_of_string @@ Js.to_string i in
     print_endline __LOC__ ;
@@ -140,6 +156,7 @@ let init bname =
       method summary = Page.summary conf base
       method searchPerson = Page.searchPerson conf base
       method updatePerson = Page.updatePerson conf base
+      method doUpdatePerson = Page.doUpdatePerson conf base
     end
   in
   Page.summary conf base

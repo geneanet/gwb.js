@@ -1,13 +1,32 @@
 <section>
-  <article>
-    <h1>{{ translate.transl ('modify') }}{{ translate.transl (':') }} {{ ind.first_name }} {{ ind.surname }}</h1>
-    <form onsubmit="">
+  <h1>{{ translate.transl ('modify') | capitalize }}{{ translate.transl (':') }} {{ ind.first_name }} {{ ind.surname }}</h1>
+  <form onsubmit="return (function () {
+                  var fn = document.getElementById('i_fn').value ;
+                  var sn = document.getElementById('i_sn').value ;
+                  var occ = document.getElementById('i_occ').value ;
+                  console.log (fn + ' ' + sn + ' ' + occ)
+                  Page.doUpdatePerson ('{{ ind.iper }}', fn, sn, occ) ;
+                  return false ;
+                  })()">
+    <article>
       <input id="i_fn" placeholder="{{ translate.nth ('first name/first names', 0) | capitalize }}" type="text"
              value="{{ ind.first_name }}" >
       <input id="i_sn" placeholder="{{ translate.nth ('surname/surnames', 0) | capitalize }}" type="text"
              value="{{ ind.surname }}" >
       <input id="i_occ" placeholder="{{ translate.transl ('number') }}" type="number" value="{{ ind.occ }}">
-      <button type="submit">{{ translate.transl ('modify') | capitalize }}</button>
-    </form>
-  </article>
+    </article>
+
+    <h2>{{ translate.transl ('titres de noblesse') | capitalize }}</h2>
+    <article>
+      {% for t in ind.titles %}
+      <input type="text" id="i_title_{{ loop.index0 }}" value="{{ t }}">
+      {%- endfor -%}
+      <input type="text" placeholder="{{ translate.transl ('titres de noblesse') | capitalize }}"
+             id="i_title_{{ length (ind.titles) }}">
+    </article>
+
+    <button type="submit">{{ translate.transl ('modify') | capitalize }}</button>
+
+  </form>
+
 </section>

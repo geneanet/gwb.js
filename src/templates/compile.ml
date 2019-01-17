@@ -1,5 +1,6 @@
 #use "topfind" ;;
 #require "jingoo" ;;
+#require "str" ;;
 
 open Jingoo
 open Jg_types
@@ -135,7 +136,10 @@ let compile dir filename =
     let ast =
       let flush str acc =
         if str = [] then acc
-        else TextStatement (String.concat "" (List.rev str) ) :: acc
+        else
+          let s = String.concat "" (List.rev str) in
+          let s = Str.global_replace (Str.regexp "[\n ]+") " " s in
+          TextStatement s :: acc
       in
       let rec loop str acc = function
         | [] -> List.rev (flush str acc)
