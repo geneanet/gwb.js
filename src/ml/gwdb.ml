@@ -10,6 +10,9 @@ module Json = struct
 
   module U = Yojson.Basic.Util
 
+  let parse = Yojson.Basic.from_string
+  let stringify = Yojson.Basic.to_string
+
   let member = U.member
 
   let string s = `String s
@@ -23,7 +26,7 @@ module Json = struct
   let to_string = function
     | `String s -> s
     | `Null -> ""
-    | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+    | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
 
   let get_string ~__LOC__ js name =
     to_string @@ member name js
@@ -108,7 +111,7 @@ module Json = struct
         | `String "after" -> After
         | `String "or" -> OrYear (dmy2_of_json @@ member "dmy2" json)
         | `String "between" -> YearInt (dmy2_of_json @@ member "dmy2" json)
-        | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+        | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
       in
       let d = dmy_of_json prec (member "dmy1" json) in
       match member "calendar" json with
@@ -116,7 +119,7 @@ module Json = struct
       | `String "julian" -> Dgreg (d, Djulian)
       | `String "french" -> Dgreg (d, Dfrench)
       | `String "hebrew" -> Dgreg (d, Dhebrew)
-      | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+      | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
 
   let json_of_cdate cd = match Adef.od_of_cdate cd with
     | None -> null
@@ -611,7 +614,7 @@ let foi { get ; _ } ifam =
     let x =
       let url =  "families/" ^ (String.split_on_char ':' ifam |> String.concat "%3A") in
       get ~__LOC__ ~url
-      |> Yojson.Basic.from_string
+      |> parse
       |> read_family
     in
     Hashtbl.replace foi_cache ifam x ;
@@ -643,10 +646,10 @@ let foi_batch = fun ({ get ; _ } as base) ifams ->
             in
             let x =
               get ~__LOC__ ~url
-              |> Yojson.Basic.from_string
+              |> parse
               |> function
               | `List list -> List.map read_family list
-              | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+              | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
             in
             List.iter2 (Hashtbl.replace foi_cache) ifams x ;
             x)
@@ -671,12 +674,12 @@ let poi { get ; _ } iper : person =
     x
   with Not_found ->
     let x =
-      match Yojson.Basic.from_string @@
+      match parse @@
         let url = "persons/" ^ (String.split_on_char ':' iper |> String.concat "%3A") in
         get ~__LOC__ ~url
       with `List (x :: _) | x -> read_person x
     in
-    (* print_endline (Yojson.Basic.to_string x) ; *)
+    (* print_endline (stringify x) ; *)
     Hashtbl.replace poi_cache iper x ;
     Hashtbl.replace p_rev_cache iper x.revision ;
     x
@@ -707,10 +710,10 @@ let poi_batch ({ get ; _ } as base) ipers =
             in
             let x =
               get ~__LOC__ ~url
-              |> Yojson.Basic.from_string
+              |> parse
               |> function
               | `List list -> List.map read_person list
-              | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+              | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
             in
             List.iter
               (fun x ->
@@ -815,7 +818,7 @@ type string_person_index =
 
 let mk_spi fn ({ get ; _ } : base) =
   { find = begin fun istr ->
-        match get ~__LOC__ ~url:(fn istr) |> Yojson.Basic.from_string
+        match get ~__LOC__ ~url:(fn istr) |> parse
         with
         | `List l -> List.map (fun x -> get_string ~__LOC__ x "_key") l
         | _ -> []
@@ -931,9 +934,9 @@ let patch_person ({ put ; _ } as base) iper gen_person =
              ; ("person", p.person)
              ]
     in
-    put ~__LOC__ ~url:("persons/" ^ iper) ~data:(Yojson.Basic.to_string json)
+    put ~__LOC__ ~url:("persons/" ^ iper) ~data:(stringify json)
     |> (fun x -> print_endline x ; x)
-    |> Yojson.Basic.from_string
+    |> parse
     |> read_person
   in
   Hashtbl.replace poi_cache iper res ;
@@ -941,14 +944,14 @@ let patch_person ({ put ; _ } as base) iper gen_person =
 
 let nb_of_families : base -> int = fun { get ; _ } ->
   get ~__LOC__ ~url:"nb_families"
-  |> Yojson.Basic.from_string
+  |> parse
   |> to_list
   |> List.hd
   |> to_int
 
 let nb_of_persons : base -> int = fun { get ; _ } ->
   get ~__LOC__ ~url:"nb_persons"
-  |> Yojson.Basic.from_string
+  |> parse
   |> to_list
   |> List.hd
   |> to_int
@@ -958,11 +961,11 @@ let person_of_key : base -> string -> string -> int -> iper option =
   (* FIXME *)
   match
     get ~__LOC__ ~url:(Printf.sprintf "persons?n=%s&p=%s&oc=%d" (Wserver.encode n) (Wserver.encode p) oc)
-    |> Yojson.Basic.from_string
+    |> parse
   with
   | `List [] -> None
   | `List (x :: _) -> Some (get_string ~__LOC__ x "_key")
-  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
 
 let get_children { family = f ; _ } =
   get_list "children" to_int (* to_string *) f
@@ -973,19 +976,19 @@ let get_parent_array { family = f ; _ } =
   match member "parent_array" f with
   | `List [ `Int father ; `Int mother ] -> [| iper_of_int father ; iper_of_int mother |] (* FIXME: To be removed *)
   | `List [ `String father ; `String mother ] -> [| father ; mother |] (* FIXME: To be removed *)
-  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
 
 let get_mother { family = f ; _ } =
   match member "parents" f with
   | `List [ _ ; `String mother ] -> mother
   | `List [ _ ; `Int mother ] -> iper_of_int mother (* FIXME: To be removed *)
-  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
 
 let get_father { family = f ; _ } =
   match member "parents" f with
   | `List [ `String father ; _ ] -> father
   | `List [ `Int father ; _ ] -> iper_of_int father (* FIXME: To be removed *)
-  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (Yojson.Basic.to_string x)
+  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
 
 let get_witnesses { family = f ; _ } : iper array =
   Array.of_list (get_list "witnesses" to_string f)
@@ -1157,7 +1160,7 @@ let ipers ({ get ; _ } as base) : iper Collection.t =
   mk_collection (nb_of_persons base) dummy_iper
     (fun offset limit ->
        get ~__LOC__ ~url:(Printf.sprintf "persons?scope=ids&offset=%d&limit=%d" offset limit)
-       |> Yojson.Basic.from_string
+       |> parse
        |> function
        | `List list -> List.map to_string list
        | _ -> failwith __LOC__
@@ -1168,7 +1171,7 @@ let persons ({ get ; _ } as base : base) : person Collection.t =
   mk_collection' (nb_of_persons base)
     (fun offset limit ->
        get ~__LOC__ ~url:(Printf.sprintf "persons?offset=%d&limit=%d" offset limit)
-       |> Yojson.Basic.from_string
+       |> parse
        |> function
        | `List list -> List.map read_person list
        | _ -> failwith __LOC__
@@ -1179,7 +1182,7 @@ let ifams ({ get ; _ } as base) : ifam Collection.t =
   mk_collection (nb_of_families base) dummy_ifam
     (fun offset limit ->
        get ~__LOC__ ~url:(Printf.sprintf "families?scope=ids&offset=%d&limit=%d" offset limit)
-       |> Yojson.Basic.from_string
+       |> parse
        |> function
        | `List list -> List.map to_string list
        | _ -> failwith __LOC__
@@ -1190,7 +1193,7 @@ let families ({ get ; _ } as base) : family Collection.t =
   mk_collection' (nb_of_families base)
     (fun offset limit ->
        get ~__LOC__ ~url:(Printf.sprintf "families?offset=%d&limit=%d" offset limit)
-       |> Yojson.Basic.from_string
+       |> parse
        |> function
        | `List list -> List.map read_family list
        | _ -> failwith __LOC__
