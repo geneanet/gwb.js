@@ -301,19 +301,28 @@ and mk_event conf base d =
                | "witnesses" -> witnesses
                | _ -> raise Not_found)
 
-and mk_title _conf _base (_nth, _name, _title, _places, _dates) =
-  Tnull
-(* FIXME *)
-  (* let nth = Tint nth in
-   * let name = match name with
-   *   | Tmain
-   *   | Tname str -> sou base n
-   *   | Tnone -> failwith __LOC__
-   * in
-   * let dates =
-   *   List.map
-   *     (fun (start, stop) -> Tnull)
-   *     dates *)
+and mk_title conf base t =
+  print_endline __LOC__ ;
+  let open Adef in
+  let ident = Tstr (Gwdb.sou base t.Def.t_ident) in
+  let name = match t.t_name with
+    | Tmain -> Tstr ""
+    | Tname s -> Tstr (Gwdb.sou base s)
+    | Tnone -> Tnull
+  in
+  let place = Tstr (Gwdb.sou base t.t_place) in
+  let date_start = mk_opt (mk_date conf) (Adef.od_of_cdate t.t_date_start) in
+  let date_end = mk_opt (mk_date conf) (Adef.od_of_cdate t.t_date_start) in
+  let nth = Tint t.t_nth in
+  print_endline __LOC__ ;
+  Tpat (function
+      | "ident" -> ident
+      | "name" -> name
+      | "place" -> place
+      | "date_start" -> date_start
+      | "date_end" -> date_end
+      | "nth" -> nth
+      | _ -> raise Not_found)
 
 and unsafe_mk_person conf base (p : Gwdb.person) =
   let get wrap fn = try wrap (fn p) with Not_found -> Tnull in
@@ -382,8 +391,7 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
   let mother = mk_parent Gwdb.get_mother in
   let nobility_titles =
     box_lazy @@
-    lazy (box_list @@
-          List.map (mk_title conf base) @@ E.nobility_titles conf base p)
+    lazy (box_list @@ List.map (mk_title conf base) @@ E.nobility_titles conf base p)
   in
   let occ = get_int E.occ in
   let occupation = get_str (E.occupation conf base) in
@@ -437,7 +445,6 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
   let surname = get_str (E.surname base) in
   let surname_aliases = Tlist (List.map box_string (E.surname_aliases base p) ) in
   let surname_key = get_str (E.surname_key base) in
-  let title = get_str (E.title conf base) in
   Tlazy (lazy (Tpat
                  (function
                    | "access" -> access
@@ -471,7 +478,6 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
                    | "linked_page" -> linked_page
                    | "max_ancestor_level" -> max_ancestor_level
                    | "mother" -> mother
-                   | "nobility_titles" -> nobility_titles
                    | "occ" -> occ
                    | "occupation" -> occupation
                    | "public_name" -> public_name
@@ -494,7 +500,7 @@ and unsafe_mk_person conf base (p : Gwdb.person) =
                    | "surname_aliases" -> surname_aliases
                    | "surname_key" -> surname_key
                    | "surname_key_val" -> surname_key_val
-                   | "title" -> title
+                   | "titles" -> nobility_titles
                    | "__str__" -> str__
                    | _ -> raise Not_found
                  )

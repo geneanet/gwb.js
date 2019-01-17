@@ -20,3 +20,7 @@
     </em>
   {%- endif -%}
 {%- endmacro %}
+
+{% macro print_title (t) -%}
+  {{ t.ident }}{% if t.place %}({{ t.place }}){% endif %}
+{%- endmacro -%}

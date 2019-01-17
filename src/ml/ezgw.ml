@@ -222,21 +222,10 @@ module Person = struct
       Name.lower (first_name ^ " " ^ surname) :: list
     else list
 
-  let nb_children_total base p =
-    let n =
-      List.fold_left
-        (fun n ifam -> n + Array.length (get_children (foi base ifam))) 0
-        (Array.to_list (get_family p))
-    in
-    string_of_int n
-
-  let nb_children conf base p =
-    Array.fold_left
-      (fun n ifam -> n + Array.length (get_children (foi base ifam)))
-      0 (get_family p)
-
   let nobility_titles conf base p =
-    Perso.nobility_titles_list conf base p
+    let allowed = lazy [] in
+    let denied = lazy [] in
+    Gwdb.nobtit base allowed denied p
 
   let notes conf base p =
     if not conf.no_note then
@@ -408,8 +397,6 @@ module Person = struct
 
   let surname_key_strip base p =
     Name.strip_c (p_surname base p) '"'
-
-  let title conf base p = person_title conf base p
 
 end
 

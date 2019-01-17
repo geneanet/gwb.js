@@ -35,10 +35,10 @@
       </em>
       <br>
     {%- endif -%}
-    {%- if has_nobility_titles -%}
+    {%- if ind.titles -%}
       <em>
-        {%- for t in nobility_title -%}
-          {%- if loop.index0 -%}, {%- endif -%}{{ t }}
+        {%- for t in ind.titles -%}
+          {%- if loop.index0 -%}, {%- endif -%}{{ print_title (t) }}
         {%- endfor -%}
       </em>
     {%- endif -%}
