@@ -5,42 +5,57 @@
            style="max-width:220px !important; max-height:220px;"
            alt="{{ ind.first_name }} {{ ind.surname }}" border="0"
            class="fiche_photo">
-    {%- endif -%}
-    {%- if ind.public_name -%}
-      {%- if ind.qualifier -%}{{ ind.public_name }} <em>{{ ind.qualifier }}</em>
-      {%- else -%}{{ ind.public_name }} {{ ind.surname }}
-      {%- endif -%}
-    {%- else -%}
-      {%- if ind.qualifier -%}{{ ind.first_name }} {{ ind.surname }} <em>{{ ind.ind.qualifier }}</em>
-      {%- else -%}{{ ind.first_name }} {{ ind.surname }}
-      {%- endif -%}
-    {%- endif -%}
-    {%- for sa in ind.surname_aliases -%}
-      <em>({{ ind.first_name }} {{ sa }})</em>
-    {%- endfor -%}
-    {%- if ind.surname_aliases -%}<br>{%- endif -%}
-    {%- for fn in ind.first_name_aliases -%}
-      <em>({{ fn }} {{ ind.surname }})</em>
-    {%- endfor -%}
-    {%- if ind.first_name_aliases -%}<br>{%- endif -%}
-    {%- if ind.public_name or ind.qualifier -%}
-      <em>({{ ind.first_name }} {{ ind.surname }})</em>
-      <br>
-    {%- endif -%}
-    {%- if ind.aliases -%}
-      <em>
-        {%- for a in ind.aliases -%}
-          {%- if loop.index0 -%}, {%- endif -%}{{ a }}
-          {%- endfor -%}
-      </em>
-      <br>
-    {%- endif -%}
-    {%- if ind.titles -%}
-      <ul>
-        {%- for t in ind.titles -%}
-          <li>{{ print_title (t) }}</li>
-        {%- endfor -%}
-      </ul>
-    {%- endif -%}
+     {%- endif -%}
+     <ul>
+       <li>{{ ind.dates }}</li>
+       {%- if ind.public_name -%}
+         <li>
+           {%- if ind.qualifier -%}{{ ind.public_name }} <em>{{ ind.qualifier }}</em>
+           {%- else -%}{{ ind.public_name }} {{ ind.surname }}
+           {%- endif -%}
+         </li>
+       {%- else -%}
+         <li>
+           {%- if ind.qualifier -%}{{ ind.first_name }} {{ ind.surname }} <em>{{ ind.ind.qualifier }}</em>
+           {%- else -%}{{ ind.first_name }} {{ ind.surname }}
+           {%- endif -%}
+         </li>
+       {%- endif -%}
+       {%- if ind.surname_aliases -%}
+         <li>
+           {%- for sa in ind.surname_aliases -%}
+             <em>({{ ind.first_name }} {{ sa }})</em>
+           {%- endfor -%}
+         </li>
+       {%- endif -%}
+       {%- if ind.first_name_aliases -%}
+         <li>
+           {%- for fn in ind.first_name_aliases -%}
+             <em>({{ fn }} {{ ind.surname }})</em>
+           {%- endfor -%}
+         </li>
+       {%- endif -%}
+       {%- if ind.public_name or ind.qualifier -%}
+         <li><em>({{ ind.first_name }} {{ ind.surname }})</em><li>
+       {%- endif -%}
+       {%- if ind.aliases -%}
+         <li>
+           <em>
+             {%- for a in ind.aliases -%}
+               {%- if loop.index0 -%}, {% endif -%}{{ a }}
+             {%- endfor -%}
+           </em>
+         </li>
+       {%- endif -%}
+       {%- if ind.titles -%}
+         <li>
+           <ul>
+             {%- for t in ind.titles -%}
+               <li>{{ print_title (t) }}</li>
+             {%- endfor -%}
+           </ul>
+         </li>
+       {%- endif -%}
+     </ul>
   </article>
 </section>

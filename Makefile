@@ -27,13 +27,13 @@ build: $(JSFILE)
 cordova-init: | $(BUILD_DIR)
 	cordova create $(APPNAME) && mv $(APPNAME) $(CORDOVA_BUILD_DIR)
 	$(CORDOVA) platform add browser
-	$(CORDOVA) platform add android
+#	$(CORDOVA) platform add android
 
 cordova-build: build | $(BUILD_DIR)
 	cp $(JSFILE) src/cordova/www/
 	$(RSYNC) src/cordova/ $(CORDOVA_BUILD_DIR)
 	$(CORDOVA) build browser
-	$(CORDOVA) build android
+#	$(CORDOVA) build android
 
  cordova-run-android: | $(BUILD_DIR)
 	$(CORDOVA) run --nobuild android
@@ -43,7 +43,7 @@ cordova-run-browser:
 
 cordova-clean:
 	$(CORDOVA) clean browser
-	$(CORDOVA) clean android
+#	$(CORDOVA) clean android
 
 $(ELECTRON_BUILD_DIR) electron-init: $(BUILD_DIR)
 	electron-forge init $(APPNAME) && mv $(APPNAME) $(ELECTRON_BUILD_DIR)
