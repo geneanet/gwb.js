@@ -15,6 +15,7 @@ module Json = struct
 
   let member = U.member
 
+  let int i = `Int i
   let string s = `String s
   let assoc o = `Assoc o
   let null = `Null
@@ -43,9 +44,9 @@ module Json = struct
   (** gwdb to json  *)
 
   let json_of_dmy dmy = assoc [
-      ("day", `Int dmy.day);
-      ("month", `Int dmy.month);
-      ("year", `Int dmy.year);
+      ("day", int dmy.day);
+      ("month", int dmy.month);
+      ("year", int dmy.year);
     ]
 
   let dmy_of_json prec json =
@@ -57,9 +58,9 @@ module Json = struct
     }
 
   let json_of_dmy2 dmy = assoc [
-      ("day", `Int dmy.day2);
-      ("month", `Int dmy.month2);
-      ("year", `Int dmy.year2);
+      ("day", int dmy.day2);
+      ("month", int dmy.month2);
+      ("year", int dmy.year2);
     ]
 
   let dmy2_of_json json =
@@ -86,10 +87,10 @@ module Json = struct
       | _ -> null
     in
     assoc [
-      ("prec", `String prec);
+      ("prec", string prec);
       ("dmy1", date1);
       ("dmy2", date2);
-      ("calendar", `String cal);
+      ("calendar", string cal);
     ]
 
   let json_of_date oc =
@@ -98,7 +99,7 @@ module Json = struct
     | Dgreg (d, Djulian) -> json_of_date_cal d "julian"
     | Dgreg (d, Dfrench) -> json_of_date_cal d "french"
     | Dgreg (d, Dhebrew) -> json_of_date_cal d "hebrew"
-    | Dtext t -> `String t
+    | Dtext t -> string t
 
   let date_of_json = function
     | `String t -> Dtext t
@@ -130,57 +131,57 @@ module Json = struct
     | json -> cdate_of_od @@ Some (date_of_json json)
 
   let json_of_pevent_name = function
-    | Epers_Birth -> `String "birth"
-    | Epers_Baptism -> `String "baptism"
-    | Epers_Death -> `String "death"
-    | Epers_Burial -> `String "burial"
-    | Epers_Cremation -> `String "cremation"
-    | Epers_Accomplishment -> `String "accomplishment"
-    | Epers_Acquisition -> `String "aquisition"
-    | Epers_Adhesion -> `String "adhesion"
-    | Epers_BaptismLDS -> `String "baptismlds"
-    | Epers_BarMitzvah -> `String "barmitzvah"
-    | Epers_BatMitzvah -> `String "batmitzvah"
-    | Epers_Benediction -> `String "benediction"
-    | Epers_ChangeName -> `String "changename"
-    | Epers_Circumcision -> `String "circumcision"
-    | Epers_Confirmation -> `String "confirmation"
-    | Epers_ConfirmationLDS -> `String "confirmationlds"
-    | Epers_Decoration -> `String "decoration"
-    | Epers_DemobilisationMilitaire -> `String "demobilisationmilitaire"
-    | Epers_Diploma -> `String "diploma"
-    | Epers_Distinction -> `String "distinction"
-    | Epers_Dotation -> `String "dotation"
-    | Epers_DotationLDS -> `String "dotationlds"
-    | Epers_Education -> `String "education"
-    | Epers_Election -> `String "election"
-    | Epers_Emigration -> `String "emigration"
-    | Epers_Excommunication -> `String "excommunication"
-    | Epers_FamilyLinkLDS -> `String "familylinklds"
-    | Epers_FirstCommunion -> `String "firstcommunion"
-    | Epers_Funeral -> `String "funeral"
-    | Epers_Graduate -> `String "graduate"
-    | Epers_Hospitalisation -> `String "hospitalisation"
-    | Epers_Illness -> `String "illness"
-    | Epers_Immigration -> `String "immigration"
-    | Epers_ListePassenger -> `String "listepassenger"
-    | Epers_MilitaryDistinction -> `String "militarydistinction"
-    | Epers_MilitaryPromotion -> `String "militarypromotion"
-    | Epers_MilitaryService -> `String "militaryservice"
-    | Epers_MobilisationMilitaire -> `String "mobilisationmilitaire"
-    | Epers_Naturalisation -> `String "naturalisation"
-    | Epers_Occupation -> `String "occupation"
-    | Epers_Ordination -> `String "ordination"
-    | Epers_Property -> `String "property"
-    | Epers_Recensement -> `String "recensement"
-    | Epers_Residence -> `String "residence"
-    | Epers_Retired -> `String "retired"
-    | Epers_ScellentChildLDS -> `String "scellentchildlds"
-    | Epers_ScellentParentLDS -> `String "scellentparentlds"
-    | Epers_ScellentSpouseLDS -> `String "scellentspouselds"
-    | Epers_VenteBien -> `String "ventebien"
-    | Epers_Will -> `String "will"
-    | Epers_Name name -> `String name
+    | Epers_Birth -> string "birth"
+    | Epers_Baptism -> string "baptism"
+    | Epers_Death -> string "death"
+    | Epers_Burial -> string "burial"
+    | Epers_Cremation -> string "cremation"
+    | Epers_Accomplishment -> string "accomplishment"
+    | Epers_Acquisition -> string "aquisition"
+    | Epers_Adhesion -> string "adhesion"
+    | Epers_BaptismLDS -> string "baptismlds"
+    | Epers_BarMitzvah -> string "barmitzvah"
+    | Epers_BatMitzvah -> string "batmitzvah"
+    | Epers_Benediction -> string "benediction"
+    | Epers_ChangeName -> string "changename"
+    | Epers_Circumcision -> string "circumcision"
+    | Epers_Confirmation -> string "confirmation"
+    | Epers_ConfirmationLDS -> string "confirmationlds"
+    | Epers_Decoration -> string "decoration"
+    | Epers_DemobilisationMilitaire -> string "demobilisationmilitaire"
+    | Epers_Diploma -> string "diploma"
+    | Epers_Distinction -> string "distinction"
+    | Epers_Dotation -> string "dotation"
+    | Epers_DotationLDS -> string "dotationlds"
+    | Epers_Education -> string "education"
+    | Epers_Election -> string "election"
+    | Epers_Emigration -> string "emigration"
+    | Epers_Excommunication -> string "excommunication"
+    | Epers_FamilyLinkLDS -> string "familylinklds"
+    | Epers_FirstCommunion -> string "firstcommunion"
+    | Epers_Funeral -> string "funeral"
+    | Epers_Graduate -> string "graduate"
+    | Epers_Hospitalisation -> string "hospitalisation"
+    | Epers_Illness -> string "illness"
+    | Epers_Immigration -> string "immigration"
+    | Epers_ListePassenger -> string "listepassenger"
+    | Epers_MilitaryDistinction -> string "militarydistinction"
+    | Epers_MilitaryPromotion -> string "militarypromotion"
+    | Epers_MilitaryService -> string "militaryservice"
+    | Epers_MobilisationMilitaire -> string "mobilisationmilitaire"
+    | Epers_Naturalisation -> string "naturalisation"
+    | Epers_Occupation -> string "occupation"
+    | Epers_Ordination -> string "ordination"
+    | Epers_Property -> string "property"
+    | Epers_Recensement -> string "recensement"
+    | Epers_Residence -> string "residence"
+    | Epers_Retired -> string "retired"
+    | Epers_ScellentChildLDS -> string "scellentchildlds"
+    | Epers_ScellentParentLDS -> string "scellentparentlds"
+    | Epers_ScellentSpouseLDS -> string "scellentspouselds"
+    | Epers_VenteBien -> string "ventebien"
+    | Epers_Will -> string "will"
+    | Epers_Name name -> string name
 
   let pevent_name_of_string = function
     | "birth" -> Epers_Birth
@@ -239,10 +240,10 @@ module Json = struct
   let pevent_witness_of_json _json = assert false
 
   let json_of_pevent pevent =
-    assoc [ ("place", `String pevent.epers_place)
-           ; ("reason", `String pevent.epers_reason)
-           ; ("note", `String pevent.epers_note)
-           ; ("src", `String pevent.epers_src)
+    assoc [ ("place", string pevent.epers_place)
+           ; ("reason", string pevent.epers_reason)
+           ; ("note", string pevent.epers_note)
+           ; ("src", string pevent.epers_src)
            ; ("name", json_of_pevent_name pevent.epers_name)
            ; ("date", json_of_cdate pevent.epers_date)
            ; ("witnesses", `List [] (* (Array.to_list @@ Array.map json_of_pevent_witness pevent.epers_witnesses) *) )
@@ -260,8 +261,8 @@ module Json = struct
     }
 
   let json_of_title_name = function
-    | Tmain -> `String ""
-    | Tname s -> `String s
+    | Tmain -> string ""
+    | Tname s -> string s
     | Tnone -> null
 
   let title_name_of_json = function
@@ -274,9 +275,9 @@ module Json = struct
     assoc [ ("name", json_of_title_name gen_title.t_name)
            ; ("date_start", json_of_cdate gen_title.t_date_start)
            ; ("date_end", json_of_cdate gen_title.t_date_end)
-           ; ("nth", `Int gen_title.t_nth)
-           ; ("ident", `String gen_title.t_ident)
-           ; ("place", `String gen_title.t_place)
+           ; ("nth", int gen_title.t_nth)
+           ; ("ident", string gen_title.t_ident)
+           ; ("place", string gen_title.t_place)
            ]
 
   let title_of_json json =
@@ -288,12 +289,12 @@ module Json = struct
     ; t_nth = get_int ~__LOC__ json "nth" }
 
   let json_of_relation_kind = function
-    | Married -> `String "married"
-    | NotMarried -> `String "not_married"
-    | Engaged -> `String  "engaged"
-    | NoSexesCheckNotMarried -> `String "no_sexes_check_not_married"
-    | NoMention -> `String "no_mention"
-    | NoSexesCheckMarried -> `String "no_sexes_check_married"
+    | Married -> string "married"
+    | NotMarried -> string "not_married"
+    | Engaged -> string  "engaged"
+    | NoSexesCheckNotMarried -> string "no_sexes_check_not_married"
+    | NoMention -> string "no_mention"
+    | NoSexesCheckMarried -> string "no_sexes_check_married"
 
   let relation_kind_of_json = function
     | `String "married" -> Married
@@ -305,19 +306,19 @@ module Json = struct
     | _ -> failwith __LOC__
 
   let json_of_fevent_name = function
-    | Efam_Marriage -> `String "marriage"
-    | Efam_NoMarriage -> `String "no_marriage"
-    | Efam_NoMention -> `String "no_mention"
-    | Efam_Engage -> `String "engaged"
-    | Efam_Divorce -> `String "divorce"
-    | Efam_Separated -> `String "separated"
-    | Efam_Annulation -> `String "annulation"
-    | Efam_MarriageBann -> `String "marriage_bann"
-    | Efam_MarriageContract -> `String "marriage_contract"
-    | Efam_MarriageLicense -> `String "marriage_license"
-    | Efam_PACS -> `String "pacs"
-    | Efam_Residence -> `String "residence"
-    | Efam_Name s -> `String s
+    | Efam_Marriage -> string "marriage"
+    | Efam_NoMarriage -> string "no_marriage"
+    | Efam_NoMention -> string "no_mention"
+    | Efam_Engage -> string "engaged"
+    | Efam_Divorce -> string "divorce"
+    | Efam_Separated -> string "separated"
+    | Efam_Annulation -> string "annulation"
+    | Efam_MarriageBann -> string "marriage_bann"
+    | Efam_MarriageContract -> string "marriage_contract"
+    | Efam_MarriageLicense -> string "marriage_license"
+    | Efam_PACS -> string "pacs"
+    | Efam_Residence -> string "residence"
+    | Efam_Name s -> string s
 
   (* FIXME *)
   let fevent_name_of_string = function
@@ -337,9 +338,9 @@ module Json = struct
     | _ -> failwith __LOC__
 
   let json_of_fevent_witness_kind = function
-    | Witness -> `String "witness"
-    | Witness_GodParent -> `String "godparent"
-  (* | Witness_Officer -> `String "officer" *)
+    | Witness -> string "witness"
+    | Witness_GodParent -> string "godparent"
+  (* | Witness_Officer -> string "officer" *)
 
 
   let fevent_witness_kind_of_json = function
@@ -349,7 +350,7 @@ module Json = struct
   (* | `String "officer" -> Witness_Officer *)
 
   let json_of_fevent_witness (person , witness_kind) =
-    assoc [ ("person", `String person)
+    assoc [ ("person", string person)
            ; ("type", json_of_fevent_witness_kind witness_kind)
            ]
 
@@ -358,10 +359,10 @@ module Json = struct
     , fevent_witness_kind_of_json (member "type" json) )
 
   let json_of_fevent fevent =
-    assoc [ ("place", `String fevent.efam_place)
-           ; ("reason", `String fevent.efam_reason)
-           ; ("note", `String fevent.efam_note)
-           ; ("src", `String fevent.efam_src)
+    assoc [ ("place", string fevent.efam_place)
+           ; ("reason", string fevent.efam_reason)
+           ; ("note", string fevent.efam_note)
+           ; ("src", string fevent.efam_src)
            ; ("name", json_of_fevent_name fevent.efam_name)
            ; ("date", json_of_cdate fevent.efam_date)
            ; ("witnesses", `List (Array.to_list @@ Array.map json_of_fevent_witness fevent.efam_witnesses) )
@@ -388,11 +389,11 @@ module Json = struct
     | date -> Divorced (cdate_of_json date)
 
   let json_of_relation_type = function
-    | Adoption -> `String "adoption"
-    | Recognition -> `String "recognition"
-    | CandidateParent -> `String "candidate_parent"
-    | GodParent -> `String "god_parent"
-    | FosterParent -> `String "foster_parent"
+    | Adoption -> string "adoption"
+    | Recognition -> string "recognition"
+    | CandidateParent -> string "candidate_parent"
+    | GodParent -> string "god_parent"
+    | FosterParent -> string "foster_parent"
 
   let relation_type_of_json = function
     | `String "adoption" -> Adoption
@@ -404,9 +405,9 @@ module Json = struct
 
   let json_of_rparent gen_relation =
     assoc [ ("type", json_of_relation_type gen_relation.r_type )
-           ; ("source", `String gen_relation.r_sources)
-           ; ("father", match gen_relation.r_fath with Some i -> `String i | _ -> null)
-           ; ("mother", match gen_relation.r_moth with Some i -> `String i | _ -> null)
+           ; ("source", string gen_relation.r_sources)
+           ; ("father", match gen_relation.r_fath with Some i -> string i | _ -> null)
+           ; ("mother", match gen_relation.r_moth with Some i -> string i | _ -> null)
            ]
 
   let rparent_of_json json =
@@ -728,16 +729,16 @@ let family_of_gen_family _base (f, _c, _d)
   let open Def in
   { ifam = f.fam_index
   ; family = assoc [ ("marriage", json_of_cdate f.marriage)
-                    ; ("marriage_place", `String f.marriage_place)
-                    ; ("marriage_note", `String f.marriage_note)
-                    ; ("marriage_src", `String f.marriage_src)
-                    ; ("witnesses", `List (Array.to_list @@ Array.map (fun x -> `String x) f.witnesses) )
+                    ; ("marriage_place", string f.marriage_place)
+                    ; ("marriage_note", string f.marriage_note)
+                    ; ("marriage_src", string f.marriage_src)
+                    ; ("witnesses", `List (Array.to_list @@ Array.map (fun x -> string x) f.witnesses) )
                     ; ("relation", json_of_relation_kind f.relation)
                     ; ("divorce", json_of_divorce f.divorce)
                     ; ("fevents", `List (List.map json_of_fevent f.fevents))
-                    ; ("comment", `String f.comment)
-                    ; ("origin_file", `String f.origin_file)
-                    ; ("fsources", `String f.fsources)
+                    ; ("comment", string f.comment)
+                    ; ("origin_file", string f.origin_file)
+                    ; ("fsources", string f.fsources)
                     ]
   }
 
@@ -745,24 +746,24 @@ let person_of_gen_person _base (p, _a, _u) =
   let open Def in
   { revision = ""
   ; iper = p.key_index
-  ; person = assoc [ ("firstname", `String p.first_name)
-                    ; ("lastname", `String p.surname)
-                    ; ("occ", `Int p.occ)
-                    ; ("image", `String p.image)
-                    ; ("public_name", `String p.public_name)
-                    ; ("qualifiers", `List (List.map (fun x -> `String x) p.qualifiers) )
-                    ; ("aliases", `List (List.map (fun x -> `String x) p.aliases) )
-                    ; ("first_names_aliases", `List (List.map (fun x -> `String x) p.first_names_aliases) )
-                    ; ("surnames_aliases", `List (List.map (fun x -> `String x) p.surnames_aliases) )
+  ; person = assoc [ ("firstname", string p.first_name)
+                    ; ("lastname", string p.surname)
+                    ; ("occ", int p.occ)
+                    ; ("image", string p.image)
+                    ; ("public_name", string p.public_name)
+                    ; ("qualifiers", `List (List.map (fun x -> string x) p.qualifiers) )
+                    ; ("aliases", `List (List.map (fun x -> string x) p.aliases) )
+                    ; ("first_names_aliases", `List (List.map (fun x -> string x) p.first_names_aliases) )
+                    ; ("surnames_aliases", `List (List.map (fun x -> string x) p.surnames_aliases) )
                     ; ("titles", `List (List.map json_of_title p.titles))
                     ; ("rparents", `List (List.map json_of_rparent p.rparents))
-                    ; ("related", `List (List.map (fun x -> `String x) p.related))
-                    ; ("occupation", `String p.occupation)
-                    ; ("sex", match p.sex with Male -> `Int 0 | Female -> `Int 1 | Neuter -> `Int 2)
-                    ; ("access", match p.access with Private -> `Int 2 | Public  -> `Int 1 | IfTitles -> `Int 0)
+                    ; ("related", `List (List.map (fun x -> string x) p.related))
+                    ; ("occupation", string p.occupation)
+                    ; ("sex", match p.sex with Male -> int 0 | Female -> int 1 | Neuter -> int 2)
+                    ; ("access", match p.access with Private -> int 2 | Public  -> int 1 | IfTitles -> int 0)
                     ; ("pevents", `List (List.map json_of_pevent p.pevents))
-                    ; ("notes", `String p.notes)
-                    ; ("psources", `String p.psources)
+                    ; ("notes", string p.notes)
+                    ; ("psources", string p.psources)
                     ]
   }
 
@@ -929,8 +930,8 @@ let patch_person ({ put ; _ } as base) iper gen_person =
   let res =
     let p = person_of_gen_person base (gen_person, (), ()) in
     let json =
-      assoc [ ("_rev", `String (Hashtbl.find p_rev_cache iper) )
-             ; ("_key", `String iper)
+      assoc [ ("_rev", string (Hashtbl.find p_rev_cache iper) )
+             ; ("_key", string iper)
              ; ("person", p.person)
              ]
     in
