@@ -11,7 +11,6 @@
                   var fn = document.getElementById('i_fn').value ;
                   var sn = document.getElementById('i_sn').value ;
                   var occ = document.getElementById('i_occ').value ;
-                  console.log (fn + ' ' + sn + ' ' + occ)
                   Page.searchPerson (fn, sn, occ) ;
                   return false ;
                   })()">
