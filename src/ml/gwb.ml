@@ -105,7 +105,7 @@ module Page = struct
                ; surname = Gwdb.insert_string base sn
                ; occ = occ }
     in
-    interp Templates.updatePerson @@
+    interp Templates.person @@
     ("ind", Data.get_n_mk_person conf base i)
     :: Data.default_env conf base
 

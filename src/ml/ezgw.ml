@@ -398,6 +398,8 @@ module Person = struct
   let surname_key_strip base p =
     Name.strip_c (p_surname base p) '"'
 
+  let title conf base p = Util.person_title conf base p
+
 end
 
 module Date = struct

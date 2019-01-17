@@ -24,7 +24,7 @@
     {%- endfor -%}
     {%- if ind.first_name_aliases -%}<br>{%- endif -%}
     {%- if ind.public_name or ind.qualifier -%}
-      <em>({{ ind.first_name }} {{ ind.surname }}</em>
+      <em>({{ ind.first_name }} {{ ind.surname }})</em>
       <br>
     {%- endif -%}
     {%- if ind.aliases -%}
@@ -36,11 +36,11 @@
       <br>
     {%- endif -%}
     {%- if ind.titles -%}
-      <em>
+      <ul>
         {%- for t in ind.titles -%}
-          {%- if loop.index0 -%}, {%- endif -%}{{ print_title (t) }}
+          <li>{{ print_title (t) }}</li>
         {%- endfor -%}
-      </em>
+      </ul>
     {%- endif -%}
   </article>
 </section>

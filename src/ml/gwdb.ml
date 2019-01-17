@@ -437,7 +437,7 @@ let iper_of_int i =
 let open_base name =
   let open Js_of_ocaml in
   let xhr ~__LOC__:loc m u data =
-    let url = Printf.sprintf "http://localhost:8529/_db/Trees/geneweb/%s/%s" name u in
+    let url = Printf.sprintf "http://192.168.9.12:8529/_db/Trees/geneweb/%s/%s" name u in
     print_endline @@ Printf.sprintf "%s: %s" loc url ;
     let xhr = XmlHttpRequest.create () in
     xhr##_open (Js.string m) (Js.string url) (Js._false) ;
@@ -948,7 +948,7 @@ let person_of_key : base -> string -> string -> int -> iper option =
   fun { get ; _ } p n oc ->
   (* FIXME *)
   match
-    get ~__LOC__ ~url:(Printf.sprintf "persons?n=%s&p=%s&occ=%d" (Wserver.encode n) (Wserver.encode p) oc)
+    get ~__LOC__ ~url:(Printf.sprintf "persons?n=%s&p=%s&oc=%d" (Wserver.encode n) (Wserver.encode p) oc)
     |> Yojson.Basic.from_string
   with
   | `List [] -> None

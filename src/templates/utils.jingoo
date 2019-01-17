@@ -22,5 +22,20 @@
 {%- endmacro %}
 
 {% macro print_title (t) -%}
-  {{ t.ident }}{% if t.place %}({{ t.place }}){% endif %}
+  {{ t.ident | capitalize }}{% if t.place %} {{ t.place }} {% endif %}
+{%- endmacro -%}
+
+{%- macro print_date_form (d, id) -%}
+  <input id="{{ id }}_year" type="number" value="{{ d.year }}">
+  <input id="{{ id }}_month" type="number" value="{{ d.year }}">
+  <input id="{{ id }}_day" type="number" value="{{ d.year }}">
+{%- endmacro -%}
+
+{%- macro print_title_form (t, id) -%}
+  <input id="{{ id }}_name" type="text" placeholder="{{ translate.trans ('title') | capitalize }}" value="{{ t.ident }}">
+  <input id="{{ id }}_name" type="text" placeholder="{{ translate.trans ('domain') | capitalize }}" value="{{ t.place }}">
+  <input id="{{ id }}_name" type="text" placeholder="{{ translate.trans ('name') | capitalize }}" value="{{ t.name }}">
+  <input id="{{ id }}_name" type="number" placeholder="{{ translate.trans ('nth') | capitalize }}" value="{{ t.nth }}">
+  {{ print_date_form (t.start_date, id) }}
+  {{ print_date_form (t.end_date, id) }}
 {%- endmacro -%}

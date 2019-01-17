@@ -39,7 +39,7 @@ cordova-build: build | $(BUILD_DIR)
 # 	$(CORDOVA) run --nobuild android
 
 cordova-run-browser:
-	$(CORDOVA) run --nobuild browser
+	BROWSER='chromium-browser --disable-web-security' $(CORDOVA) run --nobuild browser
 
 cordova-clean:
 	$(CORDOVA) clean browser
