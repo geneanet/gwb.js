@@ -39,3 +39,49 @@
   {{ print_date_form (t.start_date, id) }}
   {{ print_date_form (t.end_date, id) }}
 {%- endmacro -%}
+
+{%- macro print_date (d) -%}
+  {%- if d.day -%}
+    {{ i18n ('date_ymd', y=d.year, m=d.month, d=d.day) }}
+  {%- elif d.month -%}
+    {{ i18n ('date_ym', y=d.year, m=d.month) }}
+  {%- else -%}
+    {{ d.year }}
+  {%- endif -%}
+{%- endmacro -%}
+
+{%- function month_name (i) -%}
+ {%- if i == 0 -%}{{ 'month_january' | i18n }}
+ {%- elif i == 1 -%}{{ 'month_february' | i18n }}
+ {%- elif i == 2 -%}{{ 'month_march' | i18n }}
+ {%- elif i == 3 -%}{{ 'month_april' | i18n }}
+ {%- elif i == 4 -%}{{ 'month_may' | i18n }}
+ {%- elif i == 5 -%}{{ 'month_june' | i18n }}
+ {%- elif i == 6 -%}{{ 'month_july' | i18n }}
+ {%- elif i == 7 -%}{{ 'month_august' | i18n }}
+ {%- elif i == 8 -%}{{ 'month_september' | i18n }}
+ {%- elif i == 9 -%}{{ 'month_october' | i18n }}
+ {%- elif i == 10 -%}{{ 'month_november' | i18n }}
+ {%- elif i == 11 -%}{{ 'month_december' | i18n }}
+ {%- endif -%}
+{%- endfunction -%}
+
+{%- macro print_date_ymd (d) -%}
+  {%- if d.day -%}
+    {{ i18n ('date_ymd', y=d.year, m=d.month, d=d.day) }}
+  {%- elif d.month -%}
+    {{ i18n ('date_ym', y=d.year, m=d.month) }}
+  {%- else -%}
+    {{ d.year }}
+  {%- endif -%}
+{%- endmacro -%}
+
+{%- macro print_date_ymd_text (d) -%}
+  {%- if d.day -%}
+    {{ i18n ('date_ymd_text', y=d.year, m=(month_name (d.month)), d=d.day) }}
+  {%- elif d.month -%}
+    {{ i18n ('date_ym_text', y=d.year, m=(month_name (d.month))) }}
+  {%- else -%}
+    {{ d.year }}
+  {%- endif -%}
+{%- endmacro -%}

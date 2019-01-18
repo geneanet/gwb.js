@@ -2,3 +2,28 @@ with	with	avec
 _colon_	:	 :
 source	{{plural??sources||source}}	{{plural??sources||source}}
 timeline	timeline	chronologie
+epers_birth	birth	naissance
+efam_marriage	marriage	marriage
+epers_death	death	décès
+union	{{plural??unions||union}}	{{plural??unions||union}}
+witness	{{plural??witnesses||witness}}	{{plural??témoins||témoin}}
+divorced	divorced	{{plural??divorcés||divorcé}}
+separated	separated	{{plural??séparés||séparé}}
+x_and_y	{{x}} and {{y}}	{{x}} et {{y}}
+child	{{plural??children||child}}	{{plural??enfants||enfant}}
+month_january	january	janvier
+month_february	february	février
+month_march	march	mars
+month_april	april	avril
+month_may	may	mai
+month_june	june	juin
+month_july	july	juillet
+month_august	august	août
+month_september	september	septembre
+month_october	october	octobre
+month_november	november	novembre
+month_december	december	decembre
+date_ymd	{{y %4d}}/{{m %02d}}/{{d %02d}}	{{d %02d}}/{{m %02d}}/{{y %4d}}
+date_ym	{{y %4d}}/{{m %02d}}	{{m %02d}}/{{y %4d}}
+date_ymd_text	{{m}} {{d}}, {{y}}	{{d}} {{m}} {{y}}
+date_ym_text	{{m}}, {{y}}	{{d}} {{y}}

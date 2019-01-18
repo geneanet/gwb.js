@@ -1,13 +1,16 @@
 {%- include 'utils.jingoo' -%}
 
 {%- macro print_event (event) -%}
-  {%- if event.date -%}<span>{{ DATE.string_of_ondate (event.date) }}{{ '_colon_' | i18n }}</span>
-  {%- else -%}<span><i>--- :<i></span>
+  {%- if event.date -%}
+    <span>{{ print_date_ymd (event.date) }}{{ '_colon_' | i18n }}</span>
+    <span>{{ print_date_ymd_text (event.date) }}{{ '_colon_' | i18n }}</span>
+  {%- else -%}
+    <span><i>--/--/--</i>{{ '_colon_' | i18n }}</span>
   {%- endif -%}
   <span>
-    {{ event.name | capitalize }}
-    {%- if event.spouse %} ({{ 'with' | i18n }} {{ event.spouse }}){%- endif -%}
-    {%- if event.place %} - {{ event.place }} {%- endif -%}
+    {{ event.kind | lower | i18n | capitalize }}
+    {%- if event.spouse %}<em> {{ 'with' | i18n }} {{ short_display_person (event.spouse) }}</em>{%- endif -%}
+    {%- if event.place %}<em> - {{ event.place }}</em>{%- endif -%}
   </span>
   {%- if event.note -%}<div>{{ event.note }}</div>{%- endif -%}
   {%- if event.witnesses -%}
@@ -19,7 +22,7 @@
   {%- endif -%}
   {%- if event.src -%}
     {%- if not event.witnesses -%}<br/>{%- endif -%}
-    <span>{{  'source' | i18n (plural=false) | capitalize }}{{ '_colon_' | i18n }} {{ event.src }}</span>
+    <span>{{ 'source' | i18n (plural=false) | capitalize }}{{ '_colon_' | i18n }} {{ event.src }}</span>
   {%- endif -%}
 {%- endmacro -%}
 

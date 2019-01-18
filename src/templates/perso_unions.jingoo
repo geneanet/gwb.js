@@ -1,21 +1,29 @@
 {%- if ind.families -%}
   <section>
     <article>
-      <h2>{{ 'mariage(s)' | trans | capitalize }}</h2>
+      <h2>
+        {%- if ind.children -%}
+          {{ i18n ( 'x_and_y',
+          x=(i18n ('union', plural=(length (ind.families) > 1))),
+          y=(i18n ('child', plural=(length (ind.children) > 1))) )
+          | capitalize }}
+        {%- else -%}
+          {{ 'union' | i18n(plural=(length (ind.families) > 1)) | capitalize }}
+        {%- endif -%}
+      </h2>
       <ul>
         {%- for f in ind.families -%}
           <li>
             {{ long_married(f, ind) }}
             {%- if f.witnesses -%}
-              &nbsp;({{ 'witness/witnesses' | trans_nth (length (f.witnesses) - 1) }}
+              &nbsp;({{ 'witness' | i18n (plural = (length (f.witnesses) > 1)) }}
               {%- for w in f.witnesses -%}
                 {% if loop.index0 %}, {% endif %}{{ short_display_person (w) }}
               {%- endfor -%})
             {%- endif -%}
-            {%- if f.are_divorced -%}, {{ 'divorced' | trans_nth (0) }}{{ f.divorce_date }}{%- endif -%}
-            {%- if f.are_separated -%}, {{ 'separated' | trans_nth (0) }}{%- endif -%}
+            {%- if f.are_divorced -%}, {{ 'divorced' | i18n }}{{ f.divorce_date }}{%- endif -%}
+            {%- if f.are_separated -%}, {{ 'separated' | i18n }}{%- endif -%}
             {%- if f.children -%}
-              {{ 'having as children' | trans_nth (0) }}
               <ul>
                 {%- for c in f.children -%}
                   <li>{{ short_display_person(c) }}</li>
