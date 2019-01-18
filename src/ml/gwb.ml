@@ -160,7 +160,7 @@ let init bname =
       method doUpdatePerson = Page.doUpdatePerson conf base
     end
   in
-  Page.summary conf base
+  Page.searchPerson conf base (Js.Optdef.return @@ Js.string "louis") (Js.Optdef.return @@ Js.string "bourbon") 0
 
   (* let ctx = ref [] in
    * 

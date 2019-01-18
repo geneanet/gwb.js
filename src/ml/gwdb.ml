@@ -8,38 +8,48 @@ type istr = string
 
 module Json = struct
 
-  module U = Yojson.Basic.Util
+  let parse s = Js._JSON##parse (Js.string s)
+  let stringify x = Js.to_string (Js._JSON##stringify x)
 
-  let parse = Yojson.Basic.from_string
-  let stringify = Yojson.Basic.to_string
+  let member name js = Js.Unsafe.get js name
 
-  let member = U.member
+  let int i = Js.Unsafe.inject i
+  let string s = Js.Unsafe.inject (Js.string s)
+  let assoc o = Js.Unsafe.inject (Array.of_list o)
+  let null = Js.Unsafe.inject Js.undefined
+  let list l = Js.Unsafe.inject (Array.of_list l)
+  let bool b = Js.Unsafe.inject (Js.bool b)
 
-  let int i = `Int i
-  let string s = `String s
-  let assoc o = `Assoc o
-  let null = `Null
+  let to_int (js : Js.Unsafe.any) =
+    if Obj.magic js = Js.null || Obj.magic js = Js.undefined then 0
+    else Obj.magic js
 
-  let to_int = U.to_int
+  let to_list_aux fn (js : Js.Unsafe.any) =
+    if Obj.magic js = Js.null || Obj.magic js = Js.undefined then []
+    else Array.to_list (Array.map fn @@ Js.to_array (Obj.magic js))
 
-  let to_list = U.to_list
+  let to_list = to_list_aux (fun x -> x)
 
-  let to_string = function
-    | `String s -> s
-    | `Null -> ""
-    | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+  let to_string (js : Js.Unsafe.any) =
+    if Obj.magic js = Js.null || Obj.magic js = Js.undefined then ""
+    else Js.to_string (Obj.magic js)
 
-  let get_string ~__LOC__ js name =
-    to_string @@ member name js
+  let to_opt_string (js : Js.Unsafe.any) =
+    if Obj.magic js = Js.null || Obj.magic js = Js.undefined then None
+    else Some (Js.to_string (Obj.magic js))
 
-  let get_int ~__LOC__:_ js name =
+  let get_string ~__LOC__:x js name =
+    print_endline @@ Printf.sprintf "%s:%s" x (stringify js) ;
+    let x = to_string @@ member name js in
+    print_endline @@ Printf.sprintf "%s:%s:%s" __LOC__ name x ;
+    x
+
+  let get_int ~__LOC__:x js name =
+    print_endline x ;
     to_int (member name js)
 
   let get_list name fn js =
-    match member name js with
-    | `List l -> List.map fn l
-    | `Null -> []
-    | _ -> failwith __LOC__
+    to_list_aux fn (member name js)
 
   (** gwdb to json  *)
 
@@ -101,34 +111,40 @@ module Json = struct
     | Dgreg (d, Dhebrew) -> json_of_date_cal d "hebrew"
     | Dtext t -> string t
 
-  let date_of_json = function
-    | `String t -> Dtext t
-    | json ->
-      let prec = match member "prec" json with
-        | `String "sure" -> Sure
-        | `String "about" -> About
-        | `String "maybe" -> Maybe
-        | `String "before" -> Before
-        | `String "after" -> After
-        | `String "or" -> OrYear (dmy2_of_json @@ member "dmy2" json)
-        | `String "between" -> YearInt (dmy2_of_json @@ member "dmy2" json)
-        | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+  let date_of_json (js : Js.Unsafe.any) =
+    let prec = member "prec" js in
+    if prec = null then Dtext (to_string js)
+    else
+      let prec = match to_string prec with
+        | "sure" -> Sure
+        | "about" -> About
+        | "maybe" -> Maybe
+        | "before" -> Before
+        | "after" -> After
+        | "or" -> OrYear (dmy2_of_json @@ member "dmy2" js)
+        | "between" -> YearInt (dmy2_of_json @@ member "dmy2" js)
+        | _ -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify js)
       in
-      let d = dmy_of_json prec (member "dmy1" json) in
-      match member "calendar" json with
-      | `String "gregorian" -> Dgreg (d, Dgregorian)
-      | `String "julian" -> Dgreg (d, Djulian)
-      | `String "french" -> Dgreg (d, Dfrench)
-      | `String "hebrew" -> Dgreg (d, Dhebrew)
+      let d = dmy_of_json prec (member "dmy1" js) in
+      match to_string @@ member "calendar" js with
+      | "gregorian" -> Dgreg (d, Dgregorian)
+      | "julian" -> Dgreg (d, Djulian)
+      | "french" -> Dgreg (d, Dfrench)
+      | "hebrew" -> Dgreg (d, Dhebrew)
       | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
 
   let json_of_cdate cd = match Adef.od_of_cdate cd with
     | None -> null
     | Some date -> json_of_date date
 
-  let cdate_of_json = function
-    | `Null -> cdate_of_od None
-    | json -> cdate_of_od @@ Some (date_of_json json)
+  let cdate_of_json js =
+    print_endline __LOC__ ;
+    let x =
+      if js = null then cdate_of_od None
+      else cdate_of_od @@ Some (date_of_json js)
+    in
+    print_endline __LOC__ ;
+    x
 
   let json_of_pevent_name = function
     | Epers_Birth -> string "birth"
@@ -241,13 +257,13 @@ module Json = struct
 
   let json_of_pevent pevent =
     assoc [ ("place", string pevent.epers_place)
-           ; ("reason", string pevent.epers_reason)
-           ; ("note", string pevent.epers_note)
-           ; ("src", string pevent.epers_src)
-           ; ("name", json_of_pevent_name pevent.epers_name)
-           ; ("date", json_of_cdate pevent.epers_date)
-           ; ("witnesses", `List [] (* (Array.to_list @@ Array.map json_of_pevent_witness pevent.epers_witnesses) *) )
-           ]
+          ; ("reason", string pevent.epers_reason)
+          ; ("note", string pevent.epers_note)
+          ; ("src", string pevent.epers_src)
+          ; ("name", json_of_pevent_name pevent.epers_name)
+          ; ("date", json_of_cdate pevent.epers_date)
+          ; ("witnesses", null (* (Array.to_list @@ Array.map json_of_pevent_witness pevent.epers_witnesses) *) )
+          ]
   (* FIXME: witnesses *)
 
   let pevent_of_json json =
@@ -265,11 +281,10 @@ module Json = struct
     | Tname s -> string s
     | Tnone -> null
 
-  let title_name_of_json = function
-    | `String "" -> Tmain
-    | `String s -> Tname s
-    | `Null -> Tnone
-    | _ -> failwith __LOC__
+  let title_name_of_json js = match to_opt_string js with
+    | Some "" ->Tmain
+    | Some s -> Tname s
+    | None -> Tnone
 
   let json_of_title gen_title =
     assoc [ ("name", json_of_title_name gen_title.t_name)
@@ -296,13 +311,13 @@ module Json = struct
     | NoMention -> string "no_mention"
     | NoSexesCheckMarried -> string "no_sexes_check_married"
 
-  let relation_kind_of_json = function
-    | `String "married" -> Married
-    | `String "not_married" -> NotMarried
-    | `String "engaged" -> Engaged
-    | `String "no_sexes_check_not_married" -> NoSexesCheckNotMarried
-    | `String "no_mention" -> NoMention
-    | `String "no_sexes_check_married" -> NoSexesCheckMarried
+  let relation_kind_of_json js = match to_string js with
+    | "married" -> Married
+    | "not_married" -> NotMarried
+    | "engaged" -> Engaged
+    | "no_sexes_check_not_married" -> NoSexesCheckNotMarried
+    | "no_mention" -> NoMention
+    | "no_sexes_check_married" -> NoSexesCheckMarried
     | _ -> failwith __LOC__
 
   let json_of_fevent_name = function
@@ -321,21 +336,21 @@ module Json = struct
     | Efam_Name s -> string s
 
   (* FIXME *)
-  let fevent_name_of_string = function
-    | `String "marriage" -> Efam_Marriage
-    | `String "no_marriage" -> Efam_NoMarriage
-    | `String "no_mention" -> Efam_NoMention
-    | `String "engaged" -> Efam_Engage
-    | `String "divorce" -> Efam_Divorce
-    | `String "separated" -> Efam_Separated
-    | `String "annulation" -> Efam_Annulation
-    | `String "marriage_bann" -> Efam_MarriageBann
-    | `String "marriage_contract" -> Efam_MarriageContract
-    | `String "marriage_license" -> Efam_MarriageLicense
-    | `String "pacs" -> Efam_PACS
-    | `String "residence" -> Efam_Residence
-    | `String s -> Efam_Name s
-    | _ -> failwith __LOC__
+  let fevent_name_of_string js = match to_string js with
+    | "marriage" -> Efam_Marriage
+    | "no_marriage" -> Efam_NoMarriage
+    | "no_mention" -> Efam_NoMention
+    | "engaged" -> Efam_Engage
+    | "divorce" -> Efam_Divorce
+    | "separated" -> Efam_Separated
+    | "annulation" -> Efam_Annulation
+    | "marriage_bann" -> Efam_MarriageBann
+    | "marriage_contract" -> Efam_MarriageContract
+    | "marriage_license" -> Efam_MarriageLicense
+    | "pacs" -> Efam_PACS
+    | "residence" -> Efam_Residence
+    | "" -> failwith __LOC__
+    | s -> Efam_Name s
 
   let json_of_fevent_witness_kind = function
     | Witness -> string "witness"
@@ -343,9 +358,9 @@ module Json = struct
   (* | Witness_Officer -> string "officer" *)
 
 
-  let fevent_witness_kind_of_json = function
-    | `String "witness" -> Witness
-    | `String "godparent" -> Witness_GodParent
+  let fevent_witness_kind_of_json js = match to_string js with
+    | "witness" -> Witness
+    | "godparent" -> Witness_GodParent
     | _ -> failwith __LOC__
   (* | `String "officer" -> Witness_Officer *)
 
@@ -365,7 +380,7 @@ module Json = struct
            ; ("src", string fevent.efam_src)
            ; ("name", json_of_fevent_name fevent.efam_name)
            ; ("date", json_of_cdate fevent.efam_date)
-           ; ("witnesses", `List (Array.to_list @@ Array.map json_of_fevent_witness fevent.efam_witnesses) )
+           ; ("witnesses", list (Array.to_list @@ Array.map json_of_fevent_witness fevent.efam_witnesses) )
            ]
 
   let fevent_of_json json =
@@ -381,12 +396,12 @@ module Json = struct
   let json_of_divorce = function
     | NotDivorced -> null
     | Divorced date -> json_of_cdate date
-    | Separated -> `Bool true
+    | Separated -> bool true
 
-  let divorce_of_json = function
-    | `Null -> NotDivorced
-    | `Bool true -> Separated
-    | date -> Divorced (cdate_of_json date)
+  let divorce_of_json js =
+    if js = null then NotDivorced
+    else if js = bool true then Separated
+    else Divorced (cdate_of_json js)
 
   let json_of_relation_type = function
     | Adoption -> string "adoption"
@@ -395,12 +410,12 @@ module Json = struct
     | GodParent -> string "god_parent"
     | FosterParent -> string "foster_parent"
 
-  let relation_type_of_json = function
-    | `String "adoption" -> Adoption
-    | `String "recognition" -> Recognition
-    | `String "candidate_parent" -> CandidateParent
-    | `String "god_parent" -> GodParent
-    | `String "foster_parent" -> FosterParent
+  let relation_type_of_json rt = match to_string rt with
+    | "adoption" -> Adoption
+    | "recognition" -> Recognition
+    | "candidate_parent" -> CandidateParent
+    | "god_parent" -> GodParent
+    | "foster_parent" -> FosterParent
     | _ -> failwith __LOC__
 
   let json_of_rparent gen_relation =
@@ -412,8 +427,8 @@ module Json = struct
 
   let rparent_of_json json =
     { r_type = relation_type_of_json (member "type" json)
-    ; r_fath = (match (member "father" json) with `String i -> Some i | _ -> None)
-    ; r_moth = (match (member "mother" json) with `String i -> Some i | _ -> None)
+    ; r_fath = (match to_string @@ member "father" json with "" -> None | i -> Some i)
+    ; r_moth = (match to_string @@ member "mother" json with "" -> None | i -> Some i)
     ; r_sources = get_string ~__LOC__ json "source"
     }
 
@@ -431,8 +446,8 @@ let istr_of_string x = x
 
 type revision = string
 
-type person = { revision : revision ; iper : iper ; person : Yojson.Basic.json }
-type family = { ifam : ifam ; family : Yojson.Basic.json }
+type person = { revision : revision ; iper : iper ; person : Js.Unsafe.any }
+type family = { ifam : ifam ; family : Js.Unsafe.any }
 
 type relation = (iper, istr) gen_relation
 type title = istr gen_title
@@ -476,17 +491,16 @@ let empty_person _ _ = { revision = "" ; iper = dummy_iper ; person = null }
 let empty_family _ _ = { ifam = dummy_ifam ; family = null }
 
 let get_access { person = p ; _ } =
-  match member "access" p with
-  | `Int 2 -> Private
-  | `Int 1 -> Public
-  | `Int 0 -> IfTitles
+  match to_int @@ member "access" p with
+  | 2 -> Private
+  | 1 -> Public
+  | 0 -> IfTitles
   | _ -> failwith __LOC__
 
 let get_aliases { person = p ; _ } =
-  match member "aliases" p with
-  | `List l -> List.map to_string l
-  | `Null -> []
-  | _ -> failwith __LOC__
+  member "aliases" p
+  |> to_list
+  |> List.map to_string
 
 let get_pevents { person = p ; _ } =
   get_list "pevents" pevent_of_json p
@@ -514,8 +528,8 @@ let get_birth, get_birth_place, get_birth_note, get_birth_src =
 let get_burial, get_burial_place, get_burial_note, get_burial_src =
   get_event_aux [ Epers_Cremation ; Epers_Burial ] @@
   function
-  | Some { epers_name = Epers_Cremation ; epers_date } -> Cremated epers_date
-  | Some { epers_name = Epers_Burial ; epers_date } -> Buried epers_date
+  | Some { epers_name = Epers_Cremation ; epers_date ; _ } -> Cremated epers_date
+  | Some { epers_name = Epers_Burial ; epers_date ; _ } -> Buried epers_date
   | _ -> UnknownBurial
 
 (* FIXME *)
@@ -528,9 +542,7 @@ let get_death, get_death_place, get_death_note, get_death_src =
            else DeadDontKnowWhen
 
 let get_first_name { person = p ; _ } =
-  match member "firstname" p with
-  | `String s -> s
-  | _ -> ""
+  to_string @@ member "firstname" p
 
 let get_first_names_aliases { person = p ; _ } =
   get_list "first_names_aliases" to_string p
@@ -567,9 +579,9 @@ let get_rparents { person = p ; _ } =
   get_list "rparents" rparent_of_json p
 
 let get_parents { person = p ; _ } =
-  match member "parents" p with
-  | `String i -> Some i
-  | _ -> None (* FIXME *)
+  match to_string @@ member "parents" p with
+  | "" -> None (* FIXME *)
+  | i -> Some i
 
 let get_sex { person = p ; _ } = match get_int ~__LOC__ p "sex" with
   | 1 -> Def.Male
@@ -604,9 +616,14 @@ let sou _base istr = istr
 let foi_cache : (ifam, family) Hashtbl.t = Hashtbl.create 1024
 
 let read_family x =
-  { ifam = to_string (member "_key" x)
-  ; family = member "family" x
-  }
+  print_endline __LOC__ ;
+  let x=
+    { ifam = to_string (member "_key" x)
+    ; family = member "family" x
+    }
+  in
+  print_endline __LOC__ ;
+  x
 
 let foi { get ; _ } ifam =
   if ifam = dummy_ifam then raise Not_found ;
@@ -648,9 +665,8 @@ let foi_batch = fun ({ get ; _ } as base) ifams ->
             let x =
               get ~__LOC__ ~url
               |> parse
-              |> function
-              | `List list -> List.map read_family list
-              | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+              |> to_list
+              |> List.map read_family
             in
             List.iter2 (Hashtbl.replace foi_cache) ifams x ;
             x)
@@ -675,10 +691,10 @@ let poi { get ; _ } iper : person =
     x
   with Not_found ->
     let x =
-      match parse @@
-        let url = "persons/" ^ (String.split_on_char ':' iper |> String.concat "%3A") in
-        get ~__LOC__ ~url
-      with `List (x :: _) | x -> read_person x
+      let url = "persons/" ^ (String.split_on_char ':' iper |> String.concat "%3A") in
+      get ~__LOC__ ~url
+      |> parse
+      |> read_person
     in
     (* print_endline (stringify x) ; *)
     Hashtbl.replace poi_cache iper x ;
@@ -686,6 +702,7 @@ let poi { get ; _ } iper : person =
     x
 
 let poi_batch ({ get ; _ } as base) ipers =
+  print_endline @@ Printf.sprintf "%s" __LOC__ ;
   match ipers with
   | [] -> []
   | [ iper ] -> [poi base iper]
@@ -712,9 +729,8 @@ let poi_batch ({ get ; _ } as base) ipers =
             let x =
               get ~__LOC__ ~url
               |> parse
-              |> function
-              | `List list -> List.map read_person list
-              | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+              |> to_list
+              |> List.map read_person
             in
             List.iter
               (fun x ->
@@ -732,10 +748,10 @@ let family_of_gen_family _base (f, _c, _d)
                     ; ("marriage_place", string f.marriage_place)
                     ; ("marriage_note", string f.marriage_note)
                     ; ("marriage_src", string f.marriage_src)
-                    ; ("witnesses", `List (Array.to_list @@ Array.map (fun x -> string x) f.witnesses) )
+                    ; ("witnesses", list (Array.to_list @@ Array.map (fun x -> string x) f.witnesses) )
                     ; ("relation", json_of_relation_kind f.relation)
                     ; ("divorce", json_of_divorce f.divorce)
-                    ; ("fevents", `List (List.map json_of_fevent f.fevents))
+                    ; ("fevents", list (List.map json_of_fevent f.fevents))
                     ; ("comment", string f.comment)
                     ; ("origin_file", string f.origin_file)
                     ; ("fsources", string f.fsources)
@@ -751,17 +767,17 @@ let person_of_gen_person _base (p, _a, _u) =
                     ; ("occ", int p.occ)
                     ; ("image", string p.image)
                     ; ("public_name", string p.public_name)
-                    ; ("qualifiers", `List (List.map (fun x -> string x) p.qualifiers) )
-                    ; ("aliases", `List (List.map (fun x -> string x) p.aliases) )
-                    ; ("first_names_aliases", `List (List.map (fun x -> string x) p.first_names_aliases) )
-                    ; ("surnames_aliases", `List (List.map (fun x -> string x) p.surnames_aliases) )
-                    ; ("titles", `List (List.map json_of_title p.titles))
-                    ; ("rparents", `List (List.map json_of_rparent p.rparents))
-                    ; ("related", `List (List.map (fun x -> string x) p.related))
+                    ; ("qualifiers", list (List.map (fun x -> string x) p.qualifiers) )
+                    ; ("aliases", list (List.map (fun x -> string x) p.aliases) )
+                    ; ("first_names_aliases", list (List.map (fun x -> string x) p.first_names_aliases) )
+                    ; ("surnames_aliases", list (List.map (fun x -> string x) p.surnames_aliases) )
+                    ; ("titles", list (List.map json_of_title p.titles))
+                    ; ("rparents", list (List.map json_of_rparent p.rparents))
+                    ; ("related", list (List.map (fun x -> string x) p.related))
                     ; ("occupation", string p.occupation)
                     ; ("sex", match p.sex with Male -> int 0 | Female -> int 1 | Neuter -> int 2)
                     ; ("access", match p.access with Private -> int 2 | Public  -> int 1 | IfTitles -> int 0)
-                    ; ("pevents", `List (List.map json_of_pevent p.pevents))
+                    ; ("pevents", list (List.map json_of_pevent p.pevents))
                     ; ("notes", string p.notes)
                     ; ("psources", string p.psources)
                     ]
@@ -819,10 +835,10 @@ type string_person_index =
 
 let mk_spi fn ({ get ; _ } : base) =
   { find = begin fun istr ->
-        match get ~__LOC__ ~url:(fn istr) |> parse
-        with
-        | `List l -> List.map (fun x -> get_string ~__LOC__ x "_key") l
-        | _ -> []
+        get ~__LOC__ ~url:(fn istr)
+        |> parse
+        |> to_list
+        |> List.map (fun x -> get_string ~__LOC__ x "_key")
       end
   ; cursor = begin fun _ -> assert false end
   ; next = begin fun _ -> assert false end
@@ -960,13 +976,12 @@ let nb_of_persons : base -> int = fun { get ; _ } ->
 let person_of_key : base -> string -> string -> int -> iper option =
   fun { get ; _ } p n oc ->
   (* FIXME *)
-  match
-    get ~__LOC__ ~url:(Printf.sprintf "persons?n=%s&p=%s&oc=%d" (Wserver.encode n) (Wserver.encode p) oc)
-    |> parse
-  with
-  | `List [] -> None
-  | `List (x :: _) -> Some (get_string ~__LOC__ x "_key")
-  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+  get ~__LOC__ ~url:(Printf.sprintf "persons?n=%s&p=%s&oc=%d" (Wserver.encode n) (Wserver.encode p) oc)
+  |> parse
+  |> to_list
+  |> function
+  | [] -> None
+  | (x :: _) -> Some (get_string ~__LOC__ x "_key")
 
 let get_children { family = f ; _ } =
   get_list "children" to_int (* to_string *) f
@@ -974,22 +989,31 @@ let get_children { family = f ; _ } =
   |> Array.of_list
 
 let get_parent_array { family = f ; _ } =
-  match member "parent_array" f with
-  | `List [ `Int father ; `Int mother ] -> [| iper_of_int father ; iper_of_int mother |] (* FIXME: To be removed *)
-  | `List [ `String father ; `String mother ] -> [| father ; mother |] (* FIXME: To be removed *)
-  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+  match to_list @@ member "parents" f with
+  | [ father ; mother ] ->
+    begin  (* FIXME: To be removed *)
+      try [| iper_of_int (to_int father) ; iper_of_int (to_int mother) |]
+      with _ -> [| to_string father ; to_string mother |]
+    end
+  | _ -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify @@ member "parents" f)
 
 let get_mother { family = f ; _ } =
-  match member "parents" f with
-  | `List [ _ ; `String mother ] -> mother
-  | `List [ _ ; `Int mother ] -> iper_of_int mother (* FIXME: To be removed *)
-  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+  match to_list @@ member "parents" f with
+  | [ _father ; mother ] ->
+    begin  (* FIXME: To be removed *)
+      try iper_of_int (to_int mother)
+      with _ -> to_string mother
+    end
+  | _ -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify @@ member "parents" f)
 
 let get_father { family = f ; _ } =
-  match member "parents" f with
-  | `List [ `String father ; _ ] -> father
-  | `List [ `Int father ; _ ] -> iper_of_int father (* FIXME: To be removed *)
-  | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+  match to_list @@ member "parents" f with
+  | [ father ; _mother ] ->
+    begin  (* FIXME: To be removed *)
+      try iper_of_int (to_int father)
+      with _ -> to_string father
+    end
+  | _ -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify @@ member "parents" f)
 
 let get_witnesses { family = f ; _ } : iper array =
   Array.of_list (get_list "witnesses" to_string f)
@@ -1011,6 +1035,7 @@ let get_marriage_place { family = f ; _ } =
   get_string ~__LOC__ f "marriage_place"
 
 let get_marriage { family = f ; _ } =
+  print_endline __LOC__ ;
   cdate_of_json @@ member "marriage" f
 
 let get_fsources { family = f ; _ } =
@@ -1026,9 +1051,9 @@ let get_comment { family = f ; _ } =
   get_string ~__LOC__ f "comment"
 
 let get_family { person = p ; _ } =
-  match member "families" p with
-  | `List list -> Array.map to_string (Array.of_list list)
-  | _ -> [||]
+  to_list @@ member "families" p
+  |> Array.of_list
+  |> Array.map to_string
 
 let get_consang _f = Adef.no_consang (* FIXME *)
 
@@ -1162,9 +1187,8 @@ let ipers ({ get ; _ } as base) : iper Collection.t =
     (fun offset limit ->
        get ~__LOC__ ~url:(Printf.sprintf "persons?scope=ids&offset=%d&limit=%d" offset limit)
        |> parse
-       |> function
-       | `List list -> List.map to_string list
-       | _ -> failwith __LOC__
+       |> to_list
+       |> List.map to_string
     )
     100000
 
@@ -1173,9 +1197,8 @@ let persons ({ get ; _ } as base : base) : person Collection.t =
     (fun offset limit ->
        get ~__LOC__ ~url:(Printf.sprintf "persons?offset=%d&limit=%d" offset limit)
        |> parse
-       |> function
-       | `List list -> List.map read_person list
-       | _ -> failwith __LOC__
+       |> to_list
+       |> List.map read_person
     )
     10000
 
@@ -1184,9 +1207,8 @@ let ifams ({ get ; _ } as base) : ifam Collection.t =
     (fun offset limit ->
        get ~__LOC__ ~url:(Printf.sprintf "families?scope=ids&offset=%d&limit=%d" offset limit)
        |> parse
-       |> function
-       | `List list -> List.map to_string list
-       | _ -> failwith __LOC__
+       |> to_list
+       |> List.map to_string
     )
     100000
 
@@ -1195,9 +1217,8 @@ let families ({ get ; _ } as base) : family Collection.t =
     (fun offset limit ->
        get ~__LOC__ ~url:(Printf.sprintf "families?offset=%d&limit=%d" offset limit)
        |> parse
-       |> function
-       | `List list -> List.map read_family list
-       | _ -> failwith __LOC__
+       |> to_list
+       |> List.map read_family
     )
     10000
 
