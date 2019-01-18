@@ -15,6 +15,6 @@
     <article>No result for parameters: "{{ param.fn }}" / "{{ param.sn }}"</article>
   {%- endif -%}
   <article>
-    <button onclick="Page.summary()">Go back home!</button>
+    <button onclick="Page.summary()">{{ 'home' | trans }}</button>
   </article>
 </section>

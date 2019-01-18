@@ -548,9 +548,6 @@ module Family = struct
   let has_marriage_source base (_, fam, _, m_auth) =
     m_auth && sou base (get_marriage_src fam) <> ""
 
-  let has_witnesses (_, fam, _, m_auth) =
-    m_auth && Array.length (get_witnesses fam) > 0
-
   let ifam (ifam, _, _, _) =
     ifam
 

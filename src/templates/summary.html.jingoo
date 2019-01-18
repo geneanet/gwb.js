@@ -6,7 +6,7 @@
   <p>Number of families: {{ data.nb_of_families }}</p>
 
   <p>
-    <h2>{{ translate.transl ('search') | capitalize }}</h2>
+    <h2>{{ 'search' | trans | capitalize }}</h2>
     <form onsubmit="return (function () {
                   var fn = document.getElementById('i_fn').value ;
                   var sn = document.getElementById('i_sn').value ;
@@ -14,10 +14,10 @@
                   Page.searchPerson (fn, sn, occ) ;
                   return false ;
                   })()">
-      <input id="i_fn" placeholder="{{ translate.nth ('first name/first names', 0) | capitalize }}" type="text">
-      <input id="i_sn" placeholder="{{ translate.nth ('surname/surnames', 0) | capitalize }}" type="text">
-      <input id="i_occ" placeholder="{{ translate.transl ('number') }}" type="number" value="0">
-      <button type="submit">{{ translate.transl ('search') | capitalize }}</button>
+      <input id="i_fn" placeholder="{{ 'first name/first names' | trans_nth (0) | capitalize }}" type="text">
+      <input id="i_sn" placeholder="{{ 'surname/surnames' | trans_nth (0) | capitalize }}" type="text">
+      <input id="i_occ" placeholder="{{ 'number' | trans }}" type="number" value="0">
+      <button type="submit">{{ 'search' | trans | capitalize }}</button>
     </form>
   </p>
 

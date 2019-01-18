@@ -2,7 +2,7 @@
   <section>
     <article>
       {%- if ind.siblings -%}
-        <h2>{{ translate.transl ('siblings') | capitalize }}</h2>
+        <h2>{{ 'siblings' | trans | capitalize }}</h2>
         <ul>
           {%- for s in ind.siblings -%}
             <li>{{ short_display_person (s) }}</li>
@@ -10,7 +10,7 @@
         </ul>
       {%- endif -%}
       {%- if ind.half_siblings -%}
-        <h2>{{ translate.transl ('half siblings') | capitalize }}</h2>
+        <h2>{{ 'half siblings' | trans | capitalize }}</h2>
         <ul>
           {%- for (p, siblings) in ind.half_siblings -%}
             <li>

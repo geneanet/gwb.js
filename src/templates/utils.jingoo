@@ -32,10 +32,10 @@
 {%- endmacro -%}
 
 {%- macro print_title_form (t, id) -%}
-  <input id="{{ id }}_name" type="text" placeholder="{{ translate.trans ('title') | capitalize }}" value="{{ t.ident }}">
-  <input id="{{ id }}_name" type="text" placeholder="{{ translate.trans ('domain') | capitalize }}" value="{{ t.place }}">
-  <input id="{{ id }}_name" type="text" placeholder="{{ translate.trans ('name') | capitalize }}" value="{{ t.name }}">
-  <input id="{{ id }}_name" type="number" placeholder="{{ translate.trans ('nth') | capitalize }}" value="{{ t.nth }}">
+  <input id="{{ id }}_name" type="text" placeholder="{{ 'title' | trans | capitalize }}" value="{{ t.ident }}">
+  <input id="{{ id }}_name" type="text" placeholder="{{ 'domain' | trans | capitalize }}" value="{{ t.place }}">
+  <input id="{{ id }}_name" type="text" placeholder="{{ 'name' | trans | capitalize }}" value="{{ t.name }}">
+  <input id="{{ id }}_name" type="number" placeholder="{{ 'nth' | trans | capitalize }}" value="{{ t.nth }}">
   {{ print_date_form (t.start_date, id) }}
   {{ print_date_form (t.end_date, id) }}
 {%- endmacro -%}

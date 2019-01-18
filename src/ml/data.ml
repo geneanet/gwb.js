@@ -55,7 +55,6 @@ let rec mk_family (conf : Config.config) base fcd =
   let are_engaged = get_bool E.are_engaged in
   let are_not_married = get_bool E.are_not_married in
   let ifam = Tstr (Gwdb.string_of_ifam @@ E.ifam fcd) in
-  let has_witnesses = get_bool E.has_witnesses in
   let witnesses =
     Tlazy (lazy (get box_list @@
                  fun fcd -> get_n_mk_persons conf base @@ Array.to_list @@ E.witnesses fcd))
@@ -70,7 +69,6 @@ let rec mk_family (conf : Config.config) base fcd =
       | "divorce_date" -> divorce_date
       | "children" -> children
       | "father" -> father
-      | "has_witnesses" -> has_witnesses
       | "ifam" -> ifam
       | "marriage_date" -> marriage_date
       | "marriage_place" -> marriage_place
@@ -99,22 +97,15 @@ and date_compare = func_arg2_no_kw date_compare_aux
 and date_eq = func_arg2_no_kw (fun d1 d2 -> Tbool (date_compare_aux d1 d2 = Tint 0))
 
 and mk_date conf d =
-  let lazy_field fn =
-    Tlazy (lazy (match d with
-        | Def.Dtext _ -> Tnull
-        | Dgreg (d, c) -> fn d c) )
+  let opt =
+    match d with
+    | Def.Dtext _ -> fun _ -> Tnull
+    | Dgreg (d, c) -> fun fn -> fn d c
   in
-  let year = lazy_field (fun d _ -> Tint d.Def.year) in
-  let month = lazy_field (fun d _ -> Tint d.Def.month) in
-  let day = lazy_field (fun d _ -> Tint d.Def.day) in
-  let string_of_age = lazy_field (fun d _ -> Tstr (Date.string_of_age conf d)) in
-  let string_of_date_sep =
-    func_arg1_no_kw
-      (function Tstr sep -> Tstr (Date.string_of_date_sep conf sep d)
-              | x -> failwith_type_error_1 "string_of_date_sep" x)
-  in
-  let string_of_ondate = Tlazy (lazy (Tstr (Date.string_of_ondate conf d)) ) in
-  let prec = lazy_field (fun d _ -> Tstr (match d.Def.prec with
+  let year = opt (fun d _ -> Tint d.Def.year) in
+  let month = opt (fun d _ -> Tint d.Def.month) in
+  let day = opt (fun d _ -> Tint d.Def.day) in
+  let prec = opt (fun d _ -> Tstr (match d.Def.prec with
       | Def.Sure -> "sure"
       | About -> "about"
       | Maybe -> "maybe"
@@ -124,7 +115,7 @@ and mk_date conf d =
       | YearInt _ -> "yearint")
     )
   in
-  let d2 = lazy_field (fun d c -> match d.Def.prec with
+  let d2 = opt (fun d c -> match d.Def.prec with
       | OrYear d2 | YearInt d2 ->
         mk_date conf (Def.Dgreg ( { Def.day = d2.Def.day2
                                   ; month = d2.Def.month2
@@ -134,7 +125,7 @@ and mk_date conf d =
       | _ -> Tnull )
   in
   let calendar =
-    lazy_field (fun _ -> function
+    opt (fun _ -> function
         | Dgregorian -> Tstr "Dgregorian"
         | Djulian -> Tstr "Djulian"
         | Dfrench -> Tstr "Dfrench"
@@ -146,9 +137,6 @@ and mk_date conf d =
       | "day" -> day
       | "month" -> month
       | "prec" -> prec
-      | "string_of_age" -> string_of_age
-      | "string_of_date_sep" -> string_of_date_sep
-      | "string_of_ondate" -> string_of_ondate
       | "year" -> year
       | "__compare__" -> date_compare
       | "__eq__" -> date_eq
@@ -195,7 +183,21 @@ and to_gregorian_aux calendar d =
   | x -> print_endline @@ Printf.sprintf "%s: %s" __LOC__ x ; assert false
 
 and module_date conf =
-  let death_symbol = Date.death_symbol conf in
+  let now =
+    Tvolatile (fun () ->
+        let open Js_of_ocaml in
+        let now = new%js Js.date_now in
+        let day = Tint now##getDate in
+        let month = Tint (now##getMonth + 1) in
+        let year = Tint now##getFullYear in
+        Tpat (function
+            |  "day" -> day
+            | "month" -> month
+            | "year" -> year
+            | "prec" -> Tstr "sure"
+            | _ -> raise Not_found)
+      )
+  in
   let string_of_ondate =
     func_arg1_no_kw @@ fun d ->
     Tlazy (lazy (Tstr (Date.string_of_ondate conf @@ Def.Dgreg (to_dmy d, Def.Dgregorian) ) ) )
@@ -218,10 +220,9 @@ and module_date conf =
           | s -> failwith @@ "Unknown calendar: " ^ s
         )
       | "compare" -> date_compare
-      | "death_symbol" ->
-        Tstr death_symbol
       | "code_french_year" -> code_french_year
       | "eq" -> date_eq
+      | "now" -> now
       | "string_of_age" -> string_of_age
       | "string_of_ondate" -> string_of_ondate
       | "sub" -> func_arg2_no_kw (fun d1 d2 -> mk_dmy @@ CheckItem.time_elapsed (to_dmy d2) (to_dmy d1))
@@ -775,240 +776,6 @@ and mk_warning conf base =
 
   | PossibleDuplicateFam _ -> assert false (* FIXME *)
 
-let now () =
-  let open Js_of_ocaml in
-  let now = new%js Js.date_now in
-  let day = Tint now##getDate in
-  let month = Tint (now##getMonth + 1) in
-  let year = Tint now##getFullYear in
-  Tpat (function "day" -> day
-               | "month" -> month
-               | "year" -> year
-               | "prec" -> Tstr "sure"
-               | _ -> raise Not_found)
-
-let mk_conf conf base =
-  let _commd_no_params = Tnull in (* FIXME *)
-  let link_to_referer = Tstr (Hutil.link_to_referer conf) in (* TO BE REMOVED? *)
-  let from = Tstr conf.Config.from in
-  (* let api_host = Tstr conf.api_host in
-   * let api_port = Tint conf.api_port in *)
-  let manitou = Tbool conf.manitou in
-  let supervisor = Tbool conf.supervisor in
-  let wizard = Tvolatile (fun () -> Tbool conf.wizard) in
-  let is_printed_by_template = Tbool conf.is_printed_by_template in
-  let friend = Tbool conf.friend in
-  let just_friend_wizard = Tbool conf.just_friend_wizard in
-  let user = Tstr conf.user in
-  let username = Tstr conf.username in
-  let auth_scheme = Tnull (* auth_scheme : auth_scheme_kind; *) in
-  let pure_xhtml = Tbool conf.pure_xhtml in
-  let command = Tstr conf.command in
-  let indep_command = Tstr conf.indep_command in
-  let highlight = Tstr conf.highlight in
-  let lang = Tstr conf.lang in
-  let default_lang = Tstr conf.default_lang in
-  let multi_parents = Tbool conf.multi_parents in
-  let can_send_image = Tbool conf.can_send_image in
-  let authorized_wizards_notes = Tbool conf.authorized_wizards_notes in
-  let public_if_titles = Tbool conf.public_if_titles in
-  let public_if_no_date = Tbool conf.public_if_no_date in
-  let setup_link = Tvolatile (fun () -> Tbool conf.setup_link) in
-  let accessByKey = Tbool conf.access_by_key in
-  let private_years = Tint conf.private_years in
-  let hide_names = Tbool conf.hide_names in
-  let use_restrict = Tbool conf.use_restrict in
-  let no_image = Tbool conf.no_image in
-  let no_note = Tbool conf.no_note in
-  let bname = Tstr conf.bname in
-  let cgi_passwd = Tstr conf.cgi_passwd in
-  let env = Tobj (List.map (fun (k, v) -> (k, Tstr v)) conf.env) in
-  let senv = Tlazy (lazy (Tobj (List.map (fun (k, v) -> (k, Tstr v)) conf.senv))) in
-  let henv = Tlazy (lazy (Tobj (List.map (fun (k, v) -> (k, Tstr v)) conf.henv))) in
-  let benv = Tlazy (lazy (Tobj (List.map (fun (k, v) -> (k, Tstr v)) conf.base_env))) in
-  let allowed_titles =
-    Tlazy (lazy (Tlist (List.map (fun x -> Tstr x) (Lazy.force conf.allowed_titles) ) ) )
-  in
-  let denied_titles =
-    Tlazy (lazy (Tlist (List.map (fun x -> Tstr x) (Lazy.force conf.denied_titles) ) ) )
-  in
-  let xhs = Tstr conf.xhs in
-  let request = Tlist (List.map (fun x -> Tstr x) conf.request) in
-  let lexicon = Tpat (fun s -> Tstr (Hashtbl.find conf.lexicon s) ) in
-  let charset = Tvolatile (fun () -> Tstr conf.charset) in
-  let is_rtl = Tbool conf.is_rtl in
-  let left = Tstr conf.left in
-  let right = Tstr conf.right in
-  let auth_file = Tstr conf.auth_file in
-  let border = Tint conf.border in
-  let n_connect = Tnull (* FIXME *) in
-  let today = mk_dmy conf.today in
-  let todayWd = Tint conf.today_wd in
-  let time = mk_time conf.time in
-  let ctime = Tfloat conf.ctime in
-  let image_prefix = Tstr "https://gw.geneanet.org/images/"(* conf.image_prefix *) in
-  let bArgForBasename = Tbool conf.b_arg_for_basename in
-  Tpat (function
-      | "access_by_key" -> accessByKey
-      | "allowed_titles" -> allowed_titles
-      (* | "api_host" -> api_host
-       * | "api_port" -> api_port *)
-      | "auth_file" -> auth_file
-      | "auth_scheme" -> auth_scheme
-      | "authorized_wizards_notes" -> authorized_wizards_notes
-      | "b_arg_for_basename" -> bArgForBasename
-      | "benv" -> benv
-      | "bname" -> bname
-      | "border" -> border
-      | "can_send_image" -> can_send_image
-      | "cgi_passwd" -> cgi_passwd
-      | "charset" -> charset
-      | "command" -> command
-      | "ctime" -> ctime
-      | "default_lang" -> default_lang
-      | "denied_titles" -> denied_titles
-      | "env" -> env
-      | "friend" -> friend
-      | "from" -> from
-      | "henv" -> henv
-      | "hide_names" -> hide_names
-      | "highlight" -> highlight
-      | "image_prefix" -> image_prefix
-      | "indep_command" -> indep_command
-      | "is_printed_by_template" -> is_printed_by_template
-      | "is_rtl" -> is_rtl
-      | "just_friend_wizard" -> just_friend_wizard
-      | "lang" -> lang
-      | "left" -> left
-      | "lexicon" -> lexicon
-      | "link_to_referer" -> link_to_referer
-      | "manitou" -> manitou
-      | "multi_parents" -> multi_parents
-      | "n_connect" -> n_connect
-      | "no_image" -> no_image
-      | "no_note" -> no_note
-      | "private_years" -> private_years
-      | "public_if_no_date" -> public_if_no_date
-      | "public_if_titles" -> public_if_titles
-      | "pure_xhtml" -> pure_xhtml
-      | "request" -> request
-      | "right" -> right
-      | "senv" -> senv
-      | "setup_link" -> setup_link
-      | "supervisor" -> supervisor
-      | "time" -> time
-      | "today" -> today
-      | "today_wd" -> todayWd
-      | "use_restrict" -> use_restrict
-      | "user" -> user
-      | "username" -> username
-      | "wizard" -> wizard
-      | "xhs" -> xhs
-      | _ -> raise Not_found
-    )
-
-let mk_env conf =
-  (* FIXME browsing_with_sosa_ref *)
-  let compilation_time = Tstr (Date.string_of_date conf Compilation.compilation_time) in
-  let commit = Tstr Compilation.commit in
-  let commit_date = Tstr (Date.string_of_date conf Compilation.commit_date) in
-  let doctype = Tstr (Util.doctype conf) in
-  let get = Tpat (fun x -> Tstr (List.assoc x conf.env)) in
-  let highlight = Tstr (conf.Config.highlight) in
-  let image_prefix = Tstr (Util.image_prefix conf) in
-  let prefix = Tstr (Util.commd conf) in
-  let prefix_base = Tstr (Util.prefix_base conf) in
-  let prefix_no_iz =
-    let henv =
-      List.fold_left (fun accu k -> List.remove_assoc k accu) conf.henv
-        ["iz"; "nz"; "pz"; "ocz"]
-    in
-    Tstr (Util.commd {conf with henv = henv})
-  in
-  let referer = Tstr (Util.get_referer conf) in
-  let version = Tstr Version.txt in
-  let wo_henv_senv =
-    let l =
-      List.fold_left
-        (fun accu (k, _) -> List.remove_assoc k accu)
-        (List.fold_left
-           (fun accu (k, _) -> List.remove_assoc k accu)
-           conf.env
-           conf.henv)
-        conf.senv
-    in
-    fun s -> Tstr (List.fold_left (fun c (k, v) -> c ^ k ^ "=" ^ v ^ "&") s l)
-  in
-  let suffix = wo_henv_senv "" in
-  let url = wo_henv_senv (Util.commd conf) in
-  Tpat (function
-      | "compilation_time" -> compilation_time
-      | "commit" -> commit
-      | "commit_date" -> commit_date
-      | "doctype" -> doctype
-      | "get" -> get
-      | "highlight" -> highlight
-      | "image_prefix" -> image_prefix
-      | "prefix" -> prefix
-      | "prefix_base" -> prefix_base
-      | "prefix_no_iz" -> prefix_no_iz
-      | "referer" -> referer
-      | "suffix" -> suffix
-      | "url" -> url
-      | "version" -> version
-      | _ -> raise Not_found
-    )
-
-
-let mk_i18n conf =
-  func_arg1_no_kw @@ function
-  | Tstr arg ->
-     let len = String.length arg in
-     let ri = String.rindex arg ']' in
-     let c = if ri = len - 1 then "" else String.sub arg (ri + 1) (len - ri - 1) in
-     let s = String.sub arg 1 (len - 1 - (len - ri)) in
-     Tstr (Templ.eval_transl conf false s c)
-  | x -> failwith_type_error_1 "i18n" x
-
-(* TODO: remove base *)
-let translate conf (* base *) =
-  let decline = func_arg2_no_kw @@ fun s1 s2 ->
-    try Tstr (Util.transl_decline conf (unbox_string s1) (unbox_string s2))
-    with _ -> failwith_type_error_2 "translate" s1 s2
-  in
-  let nth = func_arg2_no_kw @@ fun a1 a2 ->
-    match a1, a2 with
-    | Tstr s, Tint i -> Tstr (Util.transl_nth conf s i)
-    | Tstr s, Tstr i -> Tstr (Util.transl_nth conf s @@ int_of_string i)
-    | _ -> failwith_type_error_2 "nth" a1 a2
-  in
-  let transl_a_of_b = func_arg2_no_kw @@ fun x y ->
-    try Tstr (Util.transl_a_of_b conf (unbox_string x) (unbox_string y))
-    with _ -> failwith_type_error_2 "a_of_b" x y
-  in
-  let transl_a_of_gr_eq_gen_lev = func_arg2_no_kw @@ fun x y ->
-    try Tstr (Util.transl_a_of_gr_eq_gen_lev conf (unbox_string x) (unbox_string y))
-    with _ -> failwith_type_error_2 "a_of_gr_eq_gen_lev" x y
-  in
-  let transl = func_arg1_no_kw @@
-    fun x ->
-    try Tstr (Util.transl conf (unbox_string x))
-    with _ -> failwith_type_error_1 "transl" x
-  in
-  let ftransl = func_arg2_no_kw @@ fun x y ->
-    match x, y with
-    | Tstr s, Tint i -> Tstr (Printf.sprintf (Scanf.format_from_string (Util.transl conf s) "%d") i)
-    | Tstr s, Tstr s' -> Tstr (Printf.sprintf (Scanf.format_from_string (Util.transl conf s) "%s") s')
-    | _ -> failwith_type_error_2 "ftransl" x y
-  in
-  Tpat (function "decline" -> decline
-               | "nth" -> nth
-               | "transl" -> transl
-               | "transl_a_of_b" -> transl_a_of_b
-               | "transl_a_of_gr_eq_gen_lev" -> transl_a_of_gr_eq_gen_lev
-               | "ftransl" -> ftransl
-               | x -> print_endline __LOC__ ; failwith x)
-
 let decode_varenv =
   func_arg1_no_kw @@ fun str ->
   try Tstr (Wserver.decode @@ unbox_string str)
@@ -1024,14 +791,6 @@ let mk_evar conf =
       | Some vv -> Tstr (Util.escape_html vv)
       | None -> Tnull)
 
-(* TODO: REMOVE *)
-let mk_count () =
-  let count = ref 0 in
-  [ ( "count", Tvolatile (fun () -> Tint !count) )
-  ; ( "incr_count", Tvolatile (fun () -> incr count ; Tnull ) )
-  ; ( "reset_count", Tvolatile (fun () -> count := 0 ; Tnull ) )
-  ]
-
 let mk_base base =
   Tpat (function
       | "nb_of_persons" -> Tint (Gwdb.nb_of_persons base)
@@ -1039,120 +798,55 @@ let mk_base base =
       | _ -> raise Not_found
     )
 
-(**
-   [{{ 'foo' | trans }}], [{{ "foo" | trans }}], [{{ trans ("foo") }}]
-   all get converted to [{{ 'foo' | trans }}].
+(* Copy of Geneweb.Util.nth_field *)
+let nth_field_abs w n =
+  let rec start i n =
+    if n = 0 then i
+    else if i < String.length w then
+      match w.[i] with
+        '<' -> start (i + 2) n
+      | '/' -> start (i + 1) (n - 1)
+      | _ -> start (i + 1) n
+    else i
+  in
+  let rec stop i =
+    if i < String.length w then
+      match w.[i] with
+        '<' -> stop (i + 2)
+      | '/' -> i
+      | _ -> stop (i + 1)
+    else i
+  in
+  let i1 = start 0 n in let i2 = stop i1 in i1, i2
+let nth_field w n =
+  let (i1, i2) = nth_field_abs w n in
+  let (i1, i2) = if i2 = i1 then nth_field_abs w 0 else i1, i2 in
+  String.sub w i1 (i2 - i1)
 
-   If the argument (['foo']) contains a ['], double quotes are used.
-  *)
+let i18n_ht : (string, string) Hashtbl.t = Marshal.from_string Templates.i18n 0
+
 let trans =
   func_arg1_no_kw @@ function
-  | Tstr s -> Tstr (Printf.sprintf
-                      (if String.contains s '\'' then "{{ \"%s\" | trans }}" else "{{ '%s' | trans }}") s)
+  | Tstr s -> Tstr (try Hashtbl.find i18n_ht s with _ -> failwith s)
   | x -> failwith_type_error_1 "trans" x
 
-let jg_printf_aux_opt_flag s i =
-  let rec loop i = match String.get s i with
-    | '-' | '0' | '+' | ' ' -> loop (i + 1)
-    | _ -> i
-  in
-  loop i
+let trans_nth =
+  func_no_kw
+    (function
+      | [ Tint n ; Tstr s ] ->
+        Tstr (nth_field (try Hashtbl.find i18n_ht s with _ -> failwith s) n)
+      | x -> failwith_type_error "trans" (List.map (fun x -> "", x) x)
+    )
+    2
 
-let jg_printf_aux_opt_int s i =
-  let rec loop i =
-    match String.get s i with
-    | '0'..'9' -> loop (i + 1)
-    | _ -> i
-  in
-  loop i
-
-let jg_printf_aux_opt_prec s i =
-  if String.get s i <> '.' then i
-  else jg_printf_aux_opt_int s (i + 1)
-
-let jg_printf_aux s =
-  let len = String.length s in
-  let rec loop acc i j =
-    if j = len then List.rev @@ if i = j then acc else `Raw (String.sub s i (j - i)) :: acc
-    else if String.unsafe_get s j = '%' then
-      if i = j
-      then
-        let j' = jg_printf_aux_opt_flag s (j + 1) in
-        let j' = jg_printf_aux_opt_int s j' in
-        let j' = jg_printf_aux_opt_prec s j' in
-        match String.unsafe_get s j' with
-        | '%' -> loop (`Raw ":" :: acc) (j' + 2) (j' + 2)
-        | 'd' -> loop (`Int (String.sub s i (j' - i + 1)) :: acc) (j' + 1) (j' + 1)
-        | 'f' -> loop (`Float (String.sub s i (j' - i + 1)) :: acc) (j' + 1) (j' + 1)
-        | 's' -> loop (`String (String.sub s i (j' - i + 1)) :: acc) (j' + 1) (j' + 1)
-        | c -> failwith @@ Printf.sprintf "jg_printf(\"%s\"): wrong character %c at index %d" s c (j + 1)
-      else
-        loop (`Raw (String.sub s i (j - i)) :: acc) j j
-    else loop acc i (j + 1)
-  in
-  loop [] 0 0
-
-let jg_printf_aux_nb_args instr =
-  List.fold_left (fun acc -> function `Raw _ -> acc | _ -> acc + 1) 0 instr
-
-let jg_printf_prepare instr args =
-  let rec aux acc args cont f =
-    loop (f (List.hd args) :: acc) (List.tl args) cont
-  and loop acc args = function
-    | [] -> assert (args = []) ; List.rev acc
-    | `Raw s :: tl ->
-      loop (s :: acc) args tl
-    | `Int s :: tl ->
-      aux acc args tl @@ fun arg ->
-      Printf.sprintf
-        (Scanf.format_from_string s "%d")
-        (unbox_int (Jg_runtime.jg_int arg))
-    | `String s :: tl ->
-      aux acc args tl @@ fun arg ->
-      Printf.sprintf
-        (Scanf.format_from_string s "%s")
-        (Jg_runtime.string_of_tvalue arg)
-    | `Float s :: tl ->
-      aux acc args tl @@ fun arg ->
-      Printf.sprintf
-        (Scanf.format_from_string s "%f")
-        (unbox_float (Jg_runtime.jg_float arg))
-  in
-  loop [] args instr
-
-let jg_printf = Tfun (fun ?kwargs:_ -> function
-    | Tstr s ->
-      let instr = jg_printf_aux s in
-      let n = jg_printf_aux_nb_args instr in
-      let f args = Tstr (String.concat "" @@ jg_printf_prepare instr args) in
-      Jg_types.func_no_kw f n
-    | x -> failwith_type_error_1 "jg_printf" x)
-
-let default_env conf base (* p *) =
-  let conf_env = mk_conf conf base in
-  (* FIXME: remove this *)
-  (* let initCache = Tfun (fun ?kwargs:_ args -> match args with
-   *     | [ p ; Tint nb_asc ; Tint from_gen_desc ; Tint nb_desc ] ->
-   *       Geneweb.Perso_link.init_cache
-   *         conf base (Gwdb.get_key_index p) nb_asc from_gen_desc nb_desc ;
-   *       Tnull
-   *     | _ -> assert false)
-   * in *)
-  let evar = mk_evar conf in
-  ("conf", conf_env)
-  :: ("trans", trans)
+let default_env conf base =
+  ("trans", trans)
+  :: ("trans_nth", trans_nth)
   :: ("DATE", module_date conf)
-  :: ("now", now ())
-  :: ("i18n", mk_i18n conf)
-  :: ("env", mk_env conf)
-  :: ("evar", evar)
-  (* :: ("initCache", initCache) *)
   :: ("decode_varenv", decode_varenv)
   :: ("code_varenv", code_varenv)
-  :: ("translate", translate conf)
   :: ("base", mk_base base)
-  :: ("printf", jg_printf)
-  :: mk_count ()
+  :: []
 
 let sandbox (conf : Config.config) base =
   let die =
@@ -1193,5 +887,4 @@ let sandbox (conf : Config.config) base =
   :: ("RANDOM_IFAM", Tvolatile (fun () -> Tint (Random.int (Gwdb.nb_of_families base))))
   :: ("DATE", module_date conf)
   :: ("trans", trans)
-  :: ("printf", jg_printf)
   :: default_env conf base

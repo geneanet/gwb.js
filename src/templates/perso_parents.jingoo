@@ -1,10 +1,10 @@
 {% if ind.father or ind.mother %}
   <section>
     <article>
-      <h2>{{ translate.transl ('parents') | capitalize }}</h2>
+      <h2>{{ 'parents' | trans | capitalize }}</h2>
       <ul>
-        {% if ind.father %}<li>{{ short_display_person(ind.father) }}</li>{% endif %}
-        {% if ind.mother %}<li>{{ short_display_person(ind.mother) }}</li>{% endif %}
+        {% if ind.father %}<li>{{ short_display_person (ind.father) }}</li>{% endif %}
+        {% if ind.mother %}<li>{{ short_display_person (ind.mother) }}</li>{% endif %}
       </ul>
     </article>
   </section>

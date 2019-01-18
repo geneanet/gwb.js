@@ -2,7 +2,7 @@
 
 <h1>{{ ind.first_name }} {{ ind.surname }}</h1>
 
-<button onclick="Page.updatePerson('{{ind.iper}}')">{{ translate.transl ('modify') }}</button>
+<button onclick="Page.updatePerson('{{ind.iper}}')">{{ 'modify' | trans }}</button>
 
 {% include 'perso_summary.jingoo' %}
 {% include 'perso_parents.jingoo' %}
@@ -10,6 +10,4 @@
 {% include 'perso_siblings.jingoo' %}
 {% include 'perso_timeline.jingoo' %}
 
-<button onclick="Page.summary()">Back to home</button>
-
-<button onclick="Page.tree('{{ind.iper}}')">Tree</button>
+<button onclick="Page.summary()">{{ 'home' | trans }}</button>

@@ -11,7 +11,7 @@ module Page = struct
 
   let interp template models =
     try
-      let ast : Jg_types.ast = Marshal.from_string template 0 in
+     let ast : Jg_types.ast = Marshal.from_string template 0 in
       let buf = Buffer.create 1024 in
       let env = { Jg_types.autoescape = false
                 ; template_dirs = []
@@ -136,13 +136,6 @@ module Page = struct
       | _ -> None
     in
     ("data", Tlist (birth_death_aux conf base get_oldest_alive true))
-    :: Data.default_env conf base
-
-  let timeline conf base i =
-    print_endline __LOC__ ;
-    let i = Js.to_string i in
-    interp Templates.timeline @@
-    ("root", Data.get_n_mk_person conf base @@ Gwdb.iper_of_string i)
     :: Data.default_env conf base
 
 end

@@ -1,21 +1,21 @@
 {%- if ind.families -%}
   <section>
     <article>
-      <h2>{{ translate.transl('mariage(s)') | capitalize }}</h2>
+      <h2>{{ 'mariage(s)' | trans | capitalize }}</h2>
       <ul>
         {%- for f in ind.families -%}
           <li>
             {{ long_married(f, ind) }}
             {%- if f.witnesses -%}
-              &nbsp;({{ translate.nth ('witness/witnesses', length (f.witnesses) - 1) }}
+              &nbsp;({{ 'witness/witnesses' | trans_nth (length (f.witnesses) - 1) }}
               {%- for w in f.witnesses -%}
                 {% if loop.index0 %}, {% endif %}{{ short_display_person (w) }}
               {%- endfor -%})
             {%- endif -%}
-            {%- if f.are_divorced -%}, {{ translate.nth ('divorced', 0) }}{{ f.divorce_date }}{%- endif -%}
-            {%- if f.are_separated -%}, {{ translate.nth ('separated', 0) }}{%- endif -%}
+            {%- if f.are_divorced -%}, {{ 'divorced' | trans_nth (0) }}{{ f.divorce_date }}{%- endif -%}
+            {%- if f.are_separated -%}, {{ 'separated' | trans_nth (0) }}{%- endif -%}
             {%- if f.children -%}
-              {{ translate.nth ('having as children', 0) }}
+              {{ 'having as children' | trans_nth (0) }}
               <ul>
                 {%- for c in f.children -%}
                   <li>{{ short_display_person(c) }}</li>

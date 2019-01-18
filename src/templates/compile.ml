@@ -30,28 +30,7 @@ let nth_field w n =
   let (i1, i2) = if i2 = i1 then nth_field_abs w 0 else i1, i2 in
   String.sub w i1 (i2 - i1)
 
-let compile dir filename =
-  let ht = Hashtbl.create 2048 in
-  let input_lexicon lang fname =
-    let chan = open_in fname in
-    let foo = ref 0 in
-    let rec loop key () = match incr foo ; (input_line chan, key) with
-      | line, _ when String.length line < 4 -> loop key ()
-      | line, _ when String.sub line 0 4 = "    " -> loop (Some (String.trim line)) ()
-      | line, Some k ->
-        begin match String.index_opt line ':' with
-          | Some i when String.sub line 0 i = lang ->
-            Hashtbl.add ht k @@ String.sub line (i + 2) (String.length line - i - 2) ;
-            loop key ()
-          | _ -> loop key ()
-        end
-      | _ -> loop key ()
-      | exception End_of_file -> close_in chan
-    in
-    loop None ()
-  in
-  input_lexicon "fr" "/home/jsagot/workspace/geneanet.git/geneweb/gw_plus/gw/lang/lex_utf8.txt" ;
-  input_lexicon "fr" "/home/jsagot/workspace/geneanet.git/geneweb/gw_plus/gw/lang/geneanet_utf8.txt" ;
+let compile ht dir filename =
   if Filename.check_suffix filename ".html.jingoo" then begin
     let env = { Jg_types.autoescape = false
               ; template_dirs = [ dir ]
@@ -73,11 +52,11 @@ let compile dir filename =
     let ast = Jg_interp.dead_code_elimination ast in
     let ast =
       let expression self = function
-        | ApplyExpr ( DotExpr (IdentExpr "translate", "transl")
+        | ApplyExpr ( IdentExpr "trans"
                     , [ LiteralExpr (Tstr s) ]) ->
           LiteralExpr (Tstr (try Hashtbl.find ht s with _ -> failwith s))
-        | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
-                    , [ LiteralExpr (Tstr s) ; LiteralExpr (Tint i) ]) ->
+        | ApplyExpr ( IdentExpr "translate_nth"
+                    , [ LiteralExpr (Tint i) ; LiteralExpr (Tstr s) ]) ->
           LiteralExpr (Tstr (nth_field (try Hashtbl.find ht s with _ -> failwith s) i))
         (* | ApplyExpr ( DotExpr (IdentExpr "translate", "nth")
          *             , [ LiteralExpr (Tstr s) ; e ]) ->
@@ -152,10 +131,34 @@ let compile dir filename =
     print_string "let " ;
     print_string var_name ;
     print_string " = {|" ;
-    print_string @@ Marshal.to_string ast [ Marshal.Compat_32 ; Marshal.Closures ; Marshal.No_sharing ] ;
+    print_string @@ Marshal.to_string ast [ Marshal.Compat_32 ; Marshal.Closures ] ;
     print_endline "|}"
   end
 
 let () =
   let dir = Sys.argv.(1) in
-  Array.iter (compile dir) @@ Sys.readdir dir
+  let ht = Hashtbl.create 2048 in
+  let input_lexicon lang fname =
+    let chan = open_in fname in
+    let foo = ref 0 in
+    let rec loop key () = match incr foo ; (input_line chan, key) with
+      | line, _ when String.length line < 4 -> loop key ()
+      | line, _ when String.sub line 0 4 = "    " -> loop (Some (String.trim line)) ()
+      | line, Some k ->
+        begin match String.index_opt line ':' with
+          | Some i when String.sub line 0 i = lang ->
+            Hashtbl.add ht k @@ String.sub line (i + 2) (String.length line - i - 2) ;
+            loop key ()
+          | _ -> loop key ()
+        end
+      | _ -> loop key ()
+      | exception End_of_file -> close_in chan
+    in
+    loop None ()
+  in
+  input_lexicon "fr" "/home/jsagot/workspace/geneanet.git/geneweb/gw_plus/gw/lang/lex_utf8.txt" ;
+  input_lexicon "fr" "/home/jsagot/workspace/geneanet.git/geneweb/gw_plus/gw/lang/geneanet_utf8.txt" ;
+  Array.iter (compile ht dir) @@ Sys.readdir dir ;
+  print_string "let i18n = {|" ;
+  print_string @@ Marshal.to_string ht [ Marshal.Compat_32 ; Marshal.Closures ; Marshal.No_sharing ] ;
+  print_endline "|}"

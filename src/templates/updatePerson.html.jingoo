@@ -1,5 +1,12 @@
+{%- macro controls () -%}
+<p>
+  <button type="submit">{{ 'modify' | trans | capitalize }}</button>
+  <button {{ onclick_page_person (ind.iper) }}>{{ 'back' | trans | capitalize }}</button>
+</p>
+{%- endmacro -%}
+
 <section>
-  <h1>{{ translate.transl ('modify') | capitalize }}{{ translate.transl (':') }} {{ ind.first_name }} {{ ind.surname }}</h1>
+  <h1>{{ 'modify' | trans | capitalize }}{{ ':'| trans }} {{ ind.first_name }} {{ ind.surname }}</h1>
   <form onsubmit="return (function () {
                   var fn = document.getElementById('i_fn').value ;
                   var sn = document.getElementById('i_sn').value ;
@@ -7,24 +14,28 @@
                   Page.doUpdatePerson ('{{ ind.iper }}', fn, sn, occ) ;
                   return false ;
                   })()">
+
+    {{ controls () }}
+
     <article>
-      <input id="i_fn" placeholder="{{ translate.nth ('first name/first names', 0) | capitalize }}" type="text"
+
+      <input id="i_fn" placeholder="{{ 'first name/first names' | trans_nth (0) | capitalize }}" type="text"
              value="{{ ind.first_name }}" >
-      <input id="i_sn" placeholder="{{ translate.nth ('surname/surnames', 0) | capitalize }}" type="text"
+      <input id="i_sn" placeholder="{{ 'surname/surnames' | trans_nth (0) | capitalize }}" type="text"
              value="{{ ind.surname }}" >
-      <input id="i_occ" placeholder="{{ translate.transl ('number') }}" type="number" value="{{ ind.occ }}">
+      <input id="i_occ" placeholder="{{ 'number' | trans }}" type="number" value="{{ ind.occ }}">
     </article>
 
-    <h2>{{ translate.transl ('titres de noblesse') | capitalize }}</h2>
+    <h2>{{ 'titres de noblesse' | trans | capitalize }}</h2>
     <article>
       {% for t in ind.titles %}
       <input type="text" id="i_title_{{ loop.index0 }}" value="{{ t }}">
       {%- endfor -%}
-      <input type="text" placeholder="{{ translate.transl ('titres de noblesse') | capitalize }}"
+      <input type="text" placeholder="{{ 'titres de noblesse' | trans | capitalize }}"
              id="i_title_{{ length (ind.titles) }}">
     </article>
 
-    <button type="submit">{{ translate.transl ('modify') | capitalize }}</button>
+    {{ controls () }}
 
   </form>
 
