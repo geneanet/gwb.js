@@ -16,7 +16,7 @@ JSNAME=gwb.bc.js
 JSFILE=src/ml/_build/default/gwb.bc.js
 APPNAME=gwb
 
-src/ml/templates.ml: $(wildcard src/templates/*.jinja2)
+src/ml/templates.ml: $(wildcard src/templates/*.jingoo)
 	ocaml src/templates/compile.ml src/templates/ > $@
 
 src/ml/i18n.ml: src/i18n/generate.mll src/i18n/i18n.tsv

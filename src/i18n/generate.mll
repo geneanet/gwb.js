@@ -1,8 +1,5 @@
 {
 
-#use "topfind" ;;
-#require "str" ;;
-
 type i18n_expr =
   | Var of string                    (* {{ user }} *)
   | Var_typed of string * string     (* {{ n %.2f }} *)
@@ -29,7 +26,9 @@ rule parse_lines langs acc = parse
       let tr =
         let rec loop = function
           | [] -> []
-          | lang :: tl -> (lang, parse_expr (Buffer.create 0) [] lexbuf) :: loop tl
+          | lang :: tl ->
+            let hd = (lang, parse_expr (Buffer.create 0) [] lexbuf) in
+            hd :: loop tl
         in loop langs
       in
     eol langs ((key, tr) :: acc) lexbuf }
@@ -74,59 +73,52 @@ and parse_string_2 buffer = parse
 
 {
 
-type arg =
-  | M of string (* mandatory *)
-  | O of string (* optionnal *)
-
-let pp_print_list fmt printer =
-  Format.fprintf fmt "[%a]"
-    (Format.pp_print_list
-       ~pp_sep:(fun fmt () -> Format.pp_print_string fmt ";")
-       printer)
-
-let print_module_body output key_value =
-  let args languages =
-    let rec f a =
-      function [] -> List.rev a
-             | Var x :: t          -> f (M x :: a) t
-             | Var_typed (x, _) :: t -> f (M x :: a) t
-             | Cond (x, _, _) :: t -> f (O x :: a) t
-             | _ :: t              -> f a t in
-    List.map (f []) languages
-    |> List.flatten
-    |> List.sort_uniq compare in
+let print_ocaml output key_value =
+  let pp_print_list fmt printer =
+    Format.fprintf fmt "[%a]"
+      (Format.pp_print_list
+         ~pp_sep:(fun fmt () -> Format.pp_print_string fmt ";")
+         printer)
+  in
   Format.pp_print_list
     ~pp_sep:(fun fmt () -> Format.pp_print_string fmt "\n")
     (fun fmt (key, tr) ->
-       let args = args (List.map snd tr) in
-       Format.fprintf fmt "let _%s kwargs = print_endline __LOC__ ;\n" key ;
        Format.pp_print_list
          ~pp_sep:(fun fmt () -> Format.pp_print_char fmt '\n')
-         (fun fmt -> function M x | O x ->
-             Format.fprintf fmt "let %s = try List.assoc \"%s\" kwargs with Not_found -> Jingoo.Jg_types.Tnull in\n" x x)
-         fmt
-         args ;
-       Format.fprintf fmt "Jingoo.Jg_types.box_string %@%@ String.concat \"\" " ;
-       pp_print_list fmt
-         (fun fmt -> function
-            | Str s -> Format.fprintf fmt "\"%s\"" s
-            | Var v -> Format.fprintf fmt "string_of_tvalue %s" v
-            | Var_typed (v, f) -> Format.fprintf fmt "Jingoo.Jg_runtime.jg_printf \"%s\" [%s]" f v
-            | Cond (c, s1, s2) ->
-              Format.fprintf fmt
-                "(if Jingoo.Jg_runtime.jg_is_true %s then \"%s\" else \"%s\")"
-                c s1 s2)
-         (List.hd @@ List.map snd tr) ;
-       (* Format.fprintf fmt " in\n" ;
-        * Format.fprintf fmt "Jingoo.Jg_types.Tfun fn\n" ; *)
-    )
+         (fun fmt (lang, line) ->
+            let args =
+              List.fold_left
+                (fun acc -> function
+                   | Var x | Var_typed (x, _) | Cond (x, _, _) -> x :: acc
+                   | _ -> acc)
+                [] line
+              |> List.sort_uniq compare
+            in
+            Format.fprintf fmt "let _%s_%s kwargs = \n" key lang ;
+            Format.pp_print_list
+              ~pp_sep:(fun fmt () -> Format.pp_print_char fmt '\n')
+              (fun fmt x ->
+                 Format.fprintf fmt "let _%s = try List.assoc \"%s\" kwargs with Not_found -> Jingoo.Jg_types.Tnull in\n" x x)
+              fmt
+              args ;
+            Format.fprintf fmt "Jingoo.Jg_types.box_string %@%@ String.concat \"\" " ;
+            pp_print_list fmt
+              (fun fmt -> function
+                 | Str s -> Format.fprintf fmt "\"%s\"" s
+                 | Var v -> Format.fprintf fmt "string_of_tvalue _%s" v
+                 | Var_typed (v, f) -> Format.fprintf fmt "Jingoo.Jg_runtime.jg_printf \"%s\" [_%s]" f v
+                 | Cond (c, s1, s2) ->
+                   Format.fprintf fmt
+                     "(if Jingoo.Jg_runtime.jg_is_true _%s then \"%s\" else \"%s\")"
+                     c s1 s2) line
+         ) output tr)
     output
     key_value ;
   Format.pp_print_string output "let f =\nJingoo.Jg_types.Tfun (fun ?(kwargs=[]) -> print_endline __LOC__ ; \n
                                  fun x -> print_endline __LOC__ ; match x with \n" ;
   Format.pp_print_list
     ~pp_sep:(fun fmt () -> Format.pp_print_string fmt "\n")
-    (fun fmt (key, _) -> Format.fprintf fmt "| Jingoo.Jg_types.Tstr \"%s\" -> print_endline __LOC__ ; _%s kwargs" key key)
+    (fun fmt (key, _) -> Format.fprintf fmt "| Jingoo.Jg_types.Tstr \"%s\" -> print_endline __LOC__ ; _%s_fr kwargs" key key)
     output
     key_value ;
   Format.pp_print_string output "\n| x -> print_endline __LOC__ ; Jingoo.Jg_types.failwith_type_error_1 \"f\" x)\n"
@@ -168,13 +160,12 @@ let _ =
     match !output_file with
     | "-" -> stdout
     | file -> open_out file in
-  let strings = Str.split (Str.regexp ",") !languages in
-  let variants = strings in
+  let langs = String.split_on_char ',' !languages in
   let lexbuf = Lexing.from_channel in_chan in
   (try
-     let key_values = parse_lines variants [] lexbuf in
+     let key_values = parse_lines langs [] lexbuf in
      let output = Format.formatter_of_out_channel out_chan in
-     print_module_body output key_values ;
+     print_ocaml output key_values ;
    with Failure msg ->
      failwith (Printf.sprintf "%s line: %d" msg lexbuf.Lexing.lex_curr_p.Lexing.pos_lnum) ) ;
   close_in in_chan ;

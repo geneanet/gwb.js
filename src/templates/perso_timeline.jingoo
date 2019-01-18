@@ -5,8 +5,8 @@
   {%- else -%}<span><i>--- :<i></span>
   {%- endif -%}
   <span>
-    {{ event.name }}
-    {%- if event.spouse -%}({{ 'with' | i18n }} {{ event.spouse }}){%- endif -%}
+    {{ event.name | capitalize }}
+    {%- if event.spouse %} ({{ 'with' | i18n }} {{ event.spouse }}){%- endif -%}
     {%- if event.place %} - {{ event.place }} {%- endif -%}
   </span>
   {%- if event.note -%}<div>{{ event.note }}</div>{%- endif -%}
@@ -19,14 +19,14 @@
   {%- endif -%}
   {%- if event.src -%}
     {%- if not event.witnesses -%}<br/>{%- endif -%}
-    <span>{{  'source' | i18n (plural=false) }}{{ '_colon_' | i18n }} {{ event.src }}</span>
+    <span>{{  'source' | i18n (plural=false) | capitalize }}{{ '_colon_' | i18n }} {{ event.src }}</span>
   {%- endif -%}
 {%- endmacro -%}
 
 {%- if ind.events -%}
   <section>
     <article>
-      <h2>{{ 'timeline' | i18n }}</h2>
+      <h2>{{ 'timeline' | i18n | capitalize }}</h2>
       <ul>
         {%- for e in ind.events | sort (attribute="date") -%}
           <li>{{ print_event (e) }}</li>
