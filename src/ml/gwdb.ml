@@ -8,35 +8,57 @@ type istr = string
 
 module Json = struct
 
-  let parse s = Js._JSON##parse (Js.string s)
-  let stringify x = Js.to_string (Js._JSON##stringify x)
+  (* let parse s = Js._JSON##parse (Js.string s)
+   * let stringify x = Js.to_string (Js._JSON##stringify x)
+   * 
+   * let member name js = Js.Unsafe.get js name
+   * 
+   * let int i = Js.Unsafe.inject i
+   * let string s = Js.Unsafe.inject (Js.string s)
+   * let assoc o = Js.Unsafe.inject (Array.of_list o)
+   * let null = Js.Unsafe.inject Js.undefined
+   * let list l = Js.Unsafe.inject (Array.of_list l)
+   * let bool b = Js.Unsafe.inject (Js.bool b)
+   * 
+   * let to_int (js : Js.Unsafe.any) =
+   *   if Obj.magic js = Js.null || Obj.magic js = Js.undefined then 0
+   *   else Obj.magic js
+   * 
+   * let to_list_aux fn (js : Js.Unsafe.any) =
+   *   if Obj.magic js = Js.null || Obj.magic js = Js.undefined then []
+   *   else Array.to_list (Array.map fn @@ Js.to_array (Obj.magic js))
+   * 
+   * let to_list = to_list_aux (fun x -> x)
+   * 
+   * let to_string (js : Js.Unsafe.any) =
+   *   if Obj.magic js = Js.null || Obj.magic js = Js.undefined then ""
+   *   else Js.to_string (Obj.magic js)
+   * 
+   * let to_opt_string (js : Js.Unsafe.any) =
+   *   if Obj.magic js = Js.null || Obj.magic js = Js.undefined then None
+   *   else Some (Js.to_string (Obj.magic js)) *)
 
-  let member name js = Js.Unsafe.get js name
+  let parse = Yojson.Basic.from_string
+  let stringify = Yojson.Basic.to_string
 
-  let int i = Js.Unsafe.inject i
-  let string s = Js.Unsafe.inject (Js.string s)
-  let assoc o = Js.Unsafe.inject (Array.of_list o)
-  let null = Js.Unsafe.inject Js.undefined
-  let list l = Js.Unsafe.inject (Array.of_list l)
-  let bool b = Js.Unsafe.inject (Js.bool b)
+  let member = Yojson.Basic.Util.member
 
-  let to_int (js : Js.Unsafe.any) =
-    if Obj.magic js = Js.null || Obj.magic js = Js.undefined then 0
-    else Obj.magic js
+  let int i = `Int i
+  let string s = `String s
+  let assoc o = `Assoc o
+  let null = `Null
+  let list l = `List l
+  let bool b = `Bool b
 
-  let to_list_aux fn (js : Js.Unsafe.any) =
-    if Obj.magic js = Js.null || Obj.magic js = Js.undefined then []
-    else Array.to_list (Array.map fn @@ Js.to_array (Obj.magic js))
+  let to_int = function `Int i -> i | _ -> 0
+
+  let to_list_aux fn = function `List l -> List.map fn l | _ -> []
 
   let to_list = to_list_aux (fun x -> x)
 
-  let to_string (js : Js.Unsafe.any) =
-    if Obj.magic js = Js.null || Obj.magic js = Js.undefined then ""
-    else Js.to_string (Obj.magic js)
+  let to_string = function `String s -> s | _ -> ""
 
-  let to_opt_string (js : Js.Unsafe.any) =
-    if Obj.magic js = Js.null || Obj.magic js = Js.undefined then None
-    else Some (Js.to_string (Obj.magic js))
+  let to_opt_string = function `String s -> Some s | _ -> None
 
   let get_string ~__LOC__:x js name =
     print_endline @@ Printf.sprintf "%s:%s" x (stringify js) ;
@@ -111,7 +133,7 @@ module Json = struct
     | Dgreg (d, Dhebrew) -> json_of_date_cal d "hebrew"
     | Dtext t -> string t
 
-  let date_of_json (js : Js.Unsafe.any) =
+  let date_of_json js =
     let prec = member "prec" js in
     if prec = null then Dtext (to_string js)
     else
@@ -131,7 +153,7 @@ module Json = struct
       | "julian" -> Dgreg (d, Djulian)
       | "french" -> Dgreg (d, Dfrench)
       | "hebrew" -> Dgreg (d, Dhebrew)
-      | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ (stringify x)
+      | x -> failwith @@ Printf.sprintf "%s: %s" __LOC__ x
 
   let json_of_cdate cd = match Adef.od_of_cdate cd with
     | None -> null
@@ -446,8 +468,11 @@ let istr_of_string x = x
 
 type revision = string
 
-type person = { revision : revision ; iper : iper ; person : Js.Unsafe.any }
-type family = { ifam : ifam ; family : Js.Unsafe.any }
+(* type person = { revision : revision ; iper : iper ; person : Js.Unsafe.any }
+ * type family = { ifam : ifam ; family : Js.Unsafe.any } *)
+
+type person = { revision : revision ; iper : iper ; person : Yojson.Basic.json }
+type family = { ifam : ifam ; family : Yojson.Basic.json }
 
 type relation = (iper, istr) gen_relation
 type title = istr gen_title
