@@ -842,6 +842,7 @@ let trans_nth =
 let default_env conf base =
   ("trans", trans)
   :: ("trans_nth", trans_nth)
+  :: ("i18n", I18n.f)
   :: ("DATE", module_date conf)
   :: ("decode_varenv", decode_varenv)
   :: ("code_varenv", code_varenv)

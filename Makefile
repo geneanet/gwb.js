@@ -19,7 +19,11 @@ APPNAME=gwb
 src/ml/templates.ml: $(wildcard src/templates/*.jinja2)
 	ocaml src/templates/compile.ml src/templates/ > $@
 
-$(JSFILE): src/ml/templates.ml $(wildcard src/ml/*.ml)
+src/ml/i18n.ml: src/i18n/generate.mll src/i18n/i18n.tsv
+	ocamllex src/i18n/generate.mll
+	ocaml src/i18n/generate.ml --languages en,fr < src/i18n/i18n.tsv > $@
+
+$(JSFILE): src/ml/i18n.ml src/ml/templates.ml $(wildcard src/ml/*.ml)
 	$(DUNE) build --profile release $(JSNAME)
 
 build: $(JSFILE)
