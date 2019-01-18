@@ -12,6 +12,6 @@
  (name gwb)
  (preprocess (pps js_of_ocaml-ppx))
  (libraries gwdb geneweb yojson js_of_ocaml jingoo)
- (modules Conf Data Ezgw Gwb Templates)
+ (modules Conf Data Ezgw Gwb Templates I18n)
  (flags       (:standard -no-keep-locs))
 )
