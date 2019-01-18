@@ -99,7 +99,7 @@ let print_module_body output key_value =
     ~pp_sep:(fun fmt () -> Format.pp_print_string fmt "\n")
     (fun fmt (key, tr) ->
        let args = args (List.map snd tr) in
-       Format.fprintf fmt "let _%s ?(kwargs=[]) () = print_endline __LOC__ ;\n" key ;
+       Format.fprintf fmt "let _%s kwargs = print_endline __LOC__ ;\n" key ;
        Format.pp_print_list
          ~pp_sep:(fun fmt () -> Format.pp_print_char fmt '\n')
          (fun fmt -> function M x | O x ->
@@ -122,11 +122,11 @@ let print_module_body output key_value =
     )
     output
     key_value ;
-  Format.pp_print_string output "let f =\nJingoo.Jg_types.Tfun (fun ?kwargs -> print_endline __LOC__ ; \n
+  Format.pp_print_string output "let f =\nJingoo.Jg_types.Tfun (fun ?(kwargs=[]) -> print_endline __LOC__ ; \n
                                  fun x -> print_endline __LOC__ ; match x with \n" ;
   Format.pp_print_list
     ~pp_sep:(fun fmt () -> Format.pp_print_string fmt "\n")
-    (fun fmt (key, _) -> Format.fprintf fmt "| Jingoo.Jg_types.Tstr \"%s\" -> print_endline __LOC__ ; _%s ?kwargs ()" key key)
+    (fun fmt (key, _) -> Format.fprintf fmt "| Jingoo.Jg_types.Tstr \"%s\" -> print_endline __LOC__ ; _%s kwargs" key key)
     output
     key_value ;
   Format.pp_print_string output "\n| x -> print_endline __LOC__ ; Jingoo.Jg_types.failwith_type_error_1 \"f\" x)\n"
