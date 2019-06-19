@@ -332,6 +332,11 @@ module Json = struct
     | NoSexesCheckNotMarried -> string "no_sexes_check_not_married"
     | NoMention -> string "no_mention"
     | NoSexesCheckMarried -> string "no_sexes_check_married"
+    | MarriageBann -> string "marriage_bann"
+    | MarriageContract -> string "marriage_contract"
+    | MarriageLicense -> string "marriage_license"
+    | Pacs -> string "pacs"
+    | Residence -> string "residence"
 
   let relation_kind_of_json js = match to_string js with
     | "married" -> Married
@@ -471,8 +476,8 @@ type revision = string
 (* type person = { revision : revision ; iper : iper ; person : Js.Unsafe.any }
  * type family = { ifam : ifam ; family : Js.Unsafe.any } *)
 
-type person = { revision : revision ; iper : iper ; person : Yojson.Basic.json }
-type family = { ifam : ifam ; family : Yojson.Basic.json }
+type person = { revision : revision ; iper : iper ; person : Yojson.Basic.t }
+type family = { ifam : ifam ; family : Yojson.Basic.t }
 
 type relation = (iper, istr) gen_relation
 type title = istr gen_title
